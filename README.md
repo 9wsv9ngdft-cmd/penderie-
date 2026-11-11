@@ -22,7 +22,7 @@ Les fichiers JS sont chargés dans cet ordre par `index.html` (pas de module : t
 - `js/saisons.js` : saisons, vêtements rangés
 - `js/meteo-tenues.js` : météo, tenues du jour, porter / annuler
 - `js/vues.js` : écrans (Ce matin, Penderie, Ajouter, Bilan, Réglages), fenêtres, fiche « passeport », accessibilité
-- `js/ia.js` : photo, couleur, reconnaissance (CLIP) et détourage, sur l'appareil
+- `js/ia.js` : photo, couleur, reconnaissance (CLIP) et détourage sur l’appareil ; file d’analyse, détourage en arrière-plan après l’enregistrement
 - `js/actions.js` : actions des boutons, formulaire, sauvegarde, restauration contrôlée, rappels
 - `js/achats.js` : occasions, tenues favorites, envies, défis
 - `js/empreinte.js` : empreinte carbone (valeurs ADEME / Impact CO2) et équivalences
@@ -34,7 +34,7 @@ Les fichiers JS sont chargés dans cet ordre par `index.html` (pas de module : t
 - `js/reparation.js` : session réparation
 - `js/badges.js` : badges
 - `js/assistant.js` : assistant shopper local
-- `js/scanner.js` : scanner caméra en rafale
+- `js/scanner.js` : appareil photo (une ou plusieurs photos, rien n’est analysé caméra ouverte), liste à vérifier
 - `js/style.js` : humeur, styles, harmonie des couleurs, photo miroir, lookbook
 - `js/main.js` : affichage, routage, démarrage
 

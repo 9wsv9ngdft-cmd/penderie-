@@ -1,53 +1,47 @@
-// Dress Up — Scanner : caméra plein écran avec un carré, en rafale.
+// Dress Up — Appareil photo : caméra plein écran avec un cadre carré, une ou plusieurs photos.
 // L'image entière sert à reconnaître le vêtement (et au détourage), le carré donne la vignette « tissu ».
 "use strict";
 
 const squares=new Map(); // id -> vignette carrée (gros plan sur la matière)
 const SQ=400;
-let SCAN=null; // {mode:'batch'|'single', stream, pending, n}
+let SCAN=null; // {stream, shots:[…]}
 
 function cropSquare(src,x,y,s){const c=document.createElement('canvas');c.width=c.height=SQ;c.getContext('2d').drawImage(src,x,y,s,s,0,0,SQ,SQ);return c}
 function downscale(src,w,h,max=640){const k=Math.min(1,max/Math.max(w,h));const c=document.createElement('canvas');c.width=Math.round(w*k);c.height=Math.round(h*k);c.getContext('2d').drawImage(src,0,0,c.width,c.height);return c}
 const sqColor=c=>colorFromPixels(c.getContext('2d').getImageData(0,0,c.width,c.height));
 
-// analyse complète d'une prise : vêtement entier + carré
-async function processShot(full,sq){
- const r=await analyzeCanvas(full);
- r.sq=sq.toDataURL('image/jpeg',.8);
- if(!r.motif)r.color=sqColor(sq); // la couleur est lue dans le carré, sans le fond
- return r;
-}
-function resultToBatch(r){
- return{photo:r.photo,sq:r.sq,color:r.color,cat:r.cat||'haut',guessed:!!r.cat,warmth:r.warmth||2,waterproof:!!r.waterproof,mat:r.mat||null,style:r.style||null,season:r.noun?seasonGuess(r.noun):'toutes',
-  name:r.motif?r.noun:`${r.noun||(r.cat?cat(r.cat).label:'Vêtement')} ${r.color==='motif'?'à motif':r.color}`};
-}
+// Une prise = l'image entière (pour reconnaître le vêtement) + le carré du cadre (vignette « tissu », couleur).
+// Rien n'est analysé pendant que la caméra est ouverte : elle reste fluide, même après 15 photos.
+const shotOf=(full,sq)=>({photo:full.toDataURL('image/jpeg',.72),sq:sq.toDataURL('image/jpeg',.8),full,color:sqColor(sq)});
 
 /* ---------- interface ---------- */
 function scanUI(){
- const el=document.createElement('div');el.id='scan';
- el.innerHTML=`<video playsinline autoplay muted></video><div class="scan-frame"><span class="scan-ok">✓ Suivant !</span></div>
- <div class="scan-top"><button class="scan-x" data-a="scanClose" aria-label="Fermer">✕</button><span id="scanHint">Place le vêtement dans le carré</span></div>
+ const el=document.createElement('div');el.id='scan';el.setAttribute('role','dialog');el.setAttribute('aria-label','Appareil photo');
+ el.innerHTML=`<video playsinline autoplay muted></video><div class="scan-frame"><span class="scan-ok">✓ Prise !</span></div>
+ <div class="scan-top"><button class="scan-x" data-a="scanClose" aria-label="Fermer">✕</button><span id="scanHint" aria-live="polite">Place le vêtement dans le carré</span></div>
  <div class="scan-strip" id="scanStrip"></div>
- <div class="scan-bar"><label class="scan-side">Galerie<input type="file" accept="image/*" ${SCAN.mode==='batch'?'multiple':''} id="scanGal" hidden></label>
- <button class="scan-shot" data-a="scanShot" aria-label="Prendre"></button>
- <button class="scan-side" data-a="scanDone" id="scanDone">${SCAN.mode==='batch'?'Terminer':'Annuler'}</button></div>`;
+ <div class="scan-bar"><label class="scan-side">Galerie<input type="file" accept="image/*" multiple id="scanGal" class="sr"></label>
+ <button class="scan-shot" data-a="scanShot" aria-label="Prendre la photo"></button>
+ <button class="scan-side scan-ok-btn" data-a="scanDone" id="scanDone" hidden>OK</button></div>`;
  document.body.appendChild(el);return el;
 }
-async function scanOpen(mode){
+async function scanOpen(){
  if($('#scan'))return; // déjà ouvert (double appui)
- SCAN={mode,stream:null,pending:0,n:0};
- if(mode==='batch')BATCH={busy:false,done:0,total:0,items:[]};
- scanUI();warmModels();await scanCam();
+ SCAN={stream:null,shots:[]};
+ scanUI();await scanCam();
 }
 // (re)démarre la caméra : à l'ouverture, au retour d'arrière-plan, ou si iOS a coupé le flux
-async function scanCam(){
+async function scanCam(retry=true){
  const el=$('#scan');if(!el||!SCAN||SCAN.stream||SCAN.starting)return;SCAN.starting=true;const mine=SCAN;
  try{
   const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1920}},audio:false});
   if(SCAN!==mine||!$('#scan')||document.hidden){st.getTracks().forEach(t=>t.stop());return} // fermé entre-temps
   SCAN.stream=st;st.getVideoTracks().forEach(t=>t.addEventListener('ended',()=>{if(SCAN===mine&&SCAN.stream===st){SCAN.stream=null;if(!document.hidden)scanCam()}}));
   const v=el.querySelector('video');v.srcObject=st;await v.play().catch(()=>{});
-  el.classList.remove('nocam');scanHint();
+  el.classList.remove('nocam');scanCount();
+  // garde-fou : si l'image reste noire, on relance une fois, puis on le dit
+  setTimeout(()=>{if(SCAN!==mine||SCAN.stream!==st||!$('#scan')||document.hidden||v.videoWidth)return;
+   scanPause();if(retry)scanCam(false);else{$('#scanHint').textContent='La caméra ne répond pas : touche ✕ et rouvre-la. Tes photos sont gardées.';el.classList.add('nocam')}},2500);
  }catch(e){
   $('#scanHint').textContent=IN_PREVIEW?'Caméra indisponible dans l’aperçu : utilise « Galerie ».':'Caméra refusée : utilise « Galerie », ou autorise la caméra dans les réglages du navigateur.';
   el.classList.add('nocam');
@@ -55,29 +49,18 @@ async function scanCam(){
 }
 function scanPause(){if(SCAN&&SCAN.stream){const st=SCAN.stream;SCAN.stream=null;st.getTracks().forEach(t=>t.stop())}}
 document.addEventListener('visibilitychange',()=>{if(!$('#scan'))return;if(document.hidden)scanPause();else scanCam()});
-function scanHint(){const h=$('#scanHint');if(h&&SCAN&&!$('#scan').classList.contains('nocam'))h.textContent=SCAN.pending>1?`Continue : ${SCAN.pending} photos en attente d’analyse`:'Place le vêtement dans le carré'}
 function scanClose(){
  scanPause();
  const el=$('#scan');if(el)el.remove();
 }
+// le bouton OK n'apparaît qu'après la première photo, avec le nombre de photos
 function scanCount(){
- const d=$('#scanDone');if(d&&SCAN.mode==='batch')d.textContent=SCAN.n?`Terminer (${SCAN.n})`:'Terminer';
+ const n=SCAN?SCAN.shots.length:0,d=$('#scanDone'),h=$('#scanHint');
+ if(d){d.hidden=!n;d.textContent=`OK (${n})`}
+ if(h&&!$('#scan').classList.contains('nocam'))h.textContent=n?`${n} photo${n>1?'s':''} · une autre, ou OK`:'Place le vêtement dans le carré';
 }
 function addStrip(sq){const s=$('#scanStrip');if(!s)return;const i=document.createElement('div');i.style.backgroundImage=`url('${sq.toDataURL('image/jpeg',.6)}')`;s.prepend(i)}
 
-async function handleShot(full,sq){
- if(SCAN.mode==='single'){
-  scanClose();toast(S.cut||S.ai?'Analyse…':'Photo prise');
-  try{const r=await processShot(full,sq);applyDraftResult(r)}catch(e){toast('Image illisible')}
-  return;
- }
- const scan=SCAN,batch=BATCH; // l'analyse attend son tour : la rafale ne lance plus tout en même temps
- scan.n++;scan.pending++;batch.total++;scanCount();addStrip(sq);scanHint();
- try{const r=await processShot(full,sq);batch.items.push(resultToBatch(r))}catch(e){}
- scan.pending--;batch.done++;scanHint();
- if(BATCH!==batch)return; // rafale annulée entre-temps
- if(!$('#scan')&&VIEW==='ajout'){BATCH.busy=SCAN.pending>0;render()}
-}
 // prise de vue : le carré affiché à l'écran est converti en coordonnées de l'image vidéo
 function shoot(){
  const v=$('#scan video'),f=$('#scan .scan-frame');if(!v||!v.videoWidth){toast('Caméra pas prête');return}
@@ -86,46 +69,86 @@ function shoot(){
  const sx=(fr.left-ox)/s,sy=(fr.top-oy)/s,ss=fr.width/s;
  const raw=document.createElement('canvas');raw.width=VW;raw.height=VH;raw.getContext('2d').drawImage(v,0,0);
  const sq=cropSquare(raw,Math.max(0,sx),Math.max(0,sy),Math.min(ss,VW,VH));
- const full=downscale(raw,VW,VH);
- snap();
- handleShot(full,sq);
+ SCAN.shots.push(shotOf(downscale(raw,VW,VH),sq));
+ snap();addStrip(sq);scanCount();
 }
-async function fromFile(file){
+async function shotFromFile(file){
  const {canvas}=await compress(file);const m=Math.min(canvas.width,canvas.height)*.6;
  const sq=cropSquare(canvas,(canvas.width-m)/2,(canvas.height-m)/2,m);
- await handleShot(canvas,sq);
+ return{shot:shotOf(canvas,sq),sq};
 }
 
-// effet « obturateur » dans le carré : voile blanc, petit rebond, coche « suivant »
+// effet « obturateur » dans le carré : voile blanc, petit rebond, coche
 function snap(){
  const f=$('#scan .scan-frame');if(!f)return;
  f.classList.remove('snap');void f.offsetWidth;f.classList.add('snap');
  try{navigator.vibrate&&navigator.vibrate(25)}catch(e){}
  setTimeout(()=>f.classList.remove('snap'),900);
 }
-/* ---------- le formulaire récupère le résultat ---------- */
-function applyDraftResult(r){
- if(!DR)DR=newDraft();keepDraftInputs();const t=DR.touched||{};
- DR.photo=r.photo;DR.sq=r.sq||null;DR.orig=r.orig||null;DR.cutOn=r.orig?true:undefined;
- if(!t.color)DR.color=r.color;
- if(r.cat&&!t.cat&&!EDIT){DR.cat=r.cat;DR.max=null;if(!t.warmth)DR.warmth=r.warmth;if(r.waterproof)DR.waterproof=true;if(!t.season)DR.season=seasonGuess(r.noun)}
- if(r.mat&&!t.mat)DR.mat=r.mat;
- if(r.style&&!(DR.style&&DR.style.length))DR.style=r.style;
- if(!DR.name.trim()&&!EDIT)DR.name=r.motif?r.noun:`${r.noun||cat(DR.cat).label} ${DR.color==='motif'?'à motif':DR.color}`;
- DR.detected=[r.noun||(r.cat?cat(r.cat).label:null),DR.color].filter(Boolean).join(' · ');
- if(r.aiErr||r.cutErr)toast(IN_PREVIEW?'IA indisponible dans l’aperçu':'Une partie de l’analyse a échoué (connexion ?)');
- if(location.hash!=='#ajout')location.hash='ajout';else render();
+
+/* ---------- après la prise : une photo = la fiche complète, plusieurs = la liste à vérifier ---------- */
+function takeShots(shots){
+ if(!shots.length)return;
+ if(shots.length===1&&!BATCH){ // une seule photo : directement la fiche complète
+  if(!DR)DR=newDraft();keepDraftInputs();const s=shots[0],t=DR.touched||{};
+  DR.photo=s.photo;DR.sq=s.sq;DR.orig=null;DR.cutOn=undefined;if(!t.color)DR.color=s.color;
+  if(!DR.name.trim()||DR.name===DR.autoName){DR.name=DR.autoName=`${cat(DR.cat).label} ${DR.color}`}
+  DR.detected=S.ai&&!EDIT?'reconnaissance…':null;
+  goAjout();
+  if(S.ai&&!EDIT){const tok=DR;guess(s.full).then(g=>{if(DR!==tok)return;applyGuess(DR,g);DR.detected=g?[g.noun,DR.color].filter(Boolean).join(' · '):null;refreshAjout()})}
+  return;
+ }
+ if(!BATCH)BATCH={items:[]};
+ const add=shots.map(s=>({photo:s.photo,sq:s.sq,color:s.color,cat:'haut',guessed:false,warmth:2,season:'toutes',touched:{},pending:!!S.ai,name:`Vêtement ${s.color}`,autoName:`Vêtement ${s.color}`}));
+ BATCH.items.push(...add);goAjout();
+ if(S.ai)add.forEach((b,k)=>guess(shots[k].full).then(g=>{
+  const was=b.autoName;b.pending=false;applyGuess(b,g);
+  // déjà enregistré : on complète la fiche, et son nom seulement s'il est encore le nom provisoire
+  if(b.savedId){const i=item(b.savedId);if(i){i.autoName=was;applyGuess(i,g,b.touched);delete i.autoName;save();if(VIEW!=='ajout'&&$('#sheet').hidden)render()}}
+  else refreshAjout()}));
 }
+function goAjout(){if(location.hash!=='#ajout'){NOSCAN=true;location.hash='ajout'}else render()}
+// complète une fiche (brouillon, ligne de la liste ou vêtement déjà enregistré) avec ce que la reconnaissance a trouvé,
+// sans jamais écraser ce que tu as choisi toi-même
+function applyGuess(D,g,touched){
+ const t=touched||D.touched||{};if(!g)return;
+ if(g.cat&&!t.cat){D.cat=g.cat;D.max=null;D.guessed=true;if(!t.warmth)D.warmth=g.warmth;if(g.waterproof)D.waterproof=true;if(!t.season)D.season=seasonGuess(g.noun)}
+ if(g.mat&&!t.mat)D.mat=g.mat;
+ if(g.style&&!t.style&&!(D.style&&D.style.length))D.style=g.style;
+ if(g.motif&&!t.color)D.color='motif';
+ const auto=!t.name&&(!D.name||!D.name.trim()||D.name===D.autoName);
+ // si tu as choisi un autre type que celui reconnu, le nom suit ton choix
+ const noun=g.cat&&g.cat!==D.cat?cat(D.cat).label:g.noun;
+ if(auto){D.name=g.motif&&noun===g.noun?noun:`${noun||cat(D.cat).label} ${D.color==='motif'?'à motif':D.color}`;D.autoName=D.name}
+}
+// redessine l'écran Ajouter sans faire perdre la saisie en cours (valeurs, champ actif, curseur)
+function refreshAjout(){
+ if(VIEW!=='ajout'||$('#scan'))return;
+ const a=document.activeElement,sel=a&&a.closest&&a.closest('#app')&&(a.id?'#'+a.id:a.dataset&&a.dataset.bi!=null?`[data-bi="${a.dataset.bi}"][data-bf="${a.dataset.bf}"]`:null);
+ const pos=sel&&typeof a.selectionStart==='number'?[a.selectionStart,a.selectionEnd]:null,y=window.scrollY;
+ keepDraftInputs();keepBatchInputs();render();window.scrollTo(0,y);
+ if(sel){const b=$(sel);if(b){b.focus({preventScroll:true});if(pos&&b.setSelectionRange)try{b.setSelectionRange(pos[0],pos[1])}catch(e){}}}
+}
+// ne recopie que ce que tu as modifié toi-même : le reste peut avoir été complété par la reconnaissance entre-temps
+function keepBatchInputs(){if(!BATCH)return;document.querySelectorAll('[data-bi]').forEach(f=>{const b=BATCH.items[+f.dataset.bi];if(b&&b.touched&&b.touched[f.dataset.bf])b[f.dataset.bf]=f.value})}
+document.addEventListener('input',e=>{const f=e.target;if(!f.dataset||f.dataset.bi==null||!BATCH)return;const b=BATCH.items[+f.dataset.bi];if(b){b[f.dataset.bf]=f.value;b.touched[f.dataset.bf]=true}});
+document.addEventListener('change',e=>{const f=e.target;if(!f.dataset||f.dataset.bi==null||!BATCH)return;const b=BATCH.items[+f.dataset.bi];if(b){b[f.dataset.bf]=f.value;b.touched[f.dataset.bf]=true}});
+
 const saveSquare=(id,sq)=>{if(sq){squares.set(id,sq);DB.set('sq:'+id,sq)}};
+let NOSCAN=false; // évite de rouvrir la caméra quand on arrive sur « Ajouter » en venant d'elle
 
 Object.assign(A,{
- scanOpen(el){scanOpen(el&&el.dataset.v==='single'?'single':'batch')},
- scanClose(){const m=SCAN&&SCAN.mode;scanClose();if(m==='batch'&&BATCH){if(!BATCH.total)BATCH=null;else{BATCH.busy=SCAN.pending>0;location.hash='ajout';render()}}},
+ scanOpen(){scanOpen()},
+ scanClose(){const n=SCAN?SCAN.shots.length:0;
+  if(n&&!confirm(`Abandonner ${n>1?`les ${n} photos prises`:'la photo prise'} ?`))return;
+  scanClose();SCAN=null},
  scanShot:shoot,
- scanDone(){A.scanClose()},
+ scanDone(){const shots=SCAN?SCAN.shots:[];scanClose();SCAN=null;takeShots(shots)},
+ manualAdd(){DR=newDraft();render();window.scrollTo({top:0})},
 });
 document.addEventListener('change',async e=>{
- if(e.target.id!=='scanGal'||!e.target.files.length)return;
- const files=[...e.target.files];if(SCAN.mode==='batch'){$('#scanHint').textContent=`${files.length} photo${files.length>1?'s':''} ajoutée${files.length>1?'s':''}`}
- for(const f of files){try{await fromFile(f)}catch(err){toast('Image illisible')}if(SCAN.mode==='single')break}
+ if((e.target.id!=='scanGal'&&e.target.id!=='galStart')||!e.target.files.length)return;
+ const files=[...e.target.files],inCam=e.target.id==='scanGal';e.target.value='';const out=[];
+ for(const f of files){try{const {shot,sq}=await shotFromFile(f);if(inCam&&SCAN){SCAN.shots.push(shot);addStrip(sq);scanCount()}else out.push(shot)}catch(err){toast('Image illisible')}}
+ if(out.length)takeShots(out);
 });

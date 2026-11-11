@@ -120,26 +120,38 @@ function colorFromPixels(id){
   const lum=v=>.3*v[0]+.59*v[1]+.11*v[2];if(Math.abs(lum(A)-lum(B))>110)return 'motif'}
  return top[0][0];
 }
-/* ---------- mémoire : une analyse à la fois, modèles libérés hors de l'écran « Ajouter » ---------- */
+/* ---------- une analyse à la fois, jamais pendant que la caméra est ouverte ----------
+   Sur iPhone, la reconnaissance et surtout le détourage occupent tout le téléphone pendant quelques secondes :
+   lancés pendant la prise de vue, ils figeaient l'écran (image noire, boutons sans réponse). */
 let BUSY=0,ANALYSES=Promise.resolve();
+const camFree=async()=>{while($('#scan'))await new Promise(r=>setTimeout(r,400))};
 function queued(fn){
- BUSY++;const run=ANALYSES.then(fn);
+ BUSY++;const run=ANALYSES.then(camFree).then(()=>new Promise(r=>setTimeout(r,30))).then(fn); // petite pause : l'écran respire entre deux analyses
  ANALYSES=run.catch(()=>{}).then(()=>{BUSY--;if(!BUSY&&VIEW!=='ajout')releaseModels()});
  return run;
 }
-function warmModels(){if(S.ai)aiLoad().catch(()=>{});if(S.cut)cutLoad().catch(()=>{})}
 async function releaseModels(){
- if(BUSY||(BATCH&&BATCH.busy)||$('#scan'))return;
+ if(BUSY||$('#scan'))return;
  if(AI){const a=AI;AI=null;AI_LOADING=null;aiMsg('');try{await a.vm.dispose()}catch(e){}}
  if(CUT){const c=CUT;CUT=null;CUT_LOADING=null;cutMsg('');try{await c.model.dispose()}catch(e){}}
 }
-const analyzeCanvas=canvas=>queued(()=>analyzeNow(canvas));
-async function analyzeNow(canvas){
- const r={};let base=canvas,cut=null;
- if(S.cut){try{cut=await cutout(canvas)}catch(e){console.warn(e);r.cutErr=true}}
- if(cut){r.photo=cut.url;r.orig=canvas.toDataURL('image/jpeg',.72);r.color=colorFromPixels(cut.pixels);base=cut.canvas}
- else{r.photo=canvas.toDataURL('image/jpeg',.72);r.color=detectColor(canvas)}
- if(S.ai){try{const g=await aiGuess(base);if(g){Object.assign(r,g);if(g.motif)r.color='motif'}}catch(e){console.warn(e);r.aiErr=true}}
- return r;
+// reconnaissance du type (null si désactivée ou impossible : la fiche reste à compléter à la main)
+let GUESS_FAIL=false;
+const guess=canvas=>!S.ai?Promise.resolve(null):queued(()=>aiGuess(canvas)).catch(e=>{console.warn(e);if(!GUESS_FAIL){GUESS_FAIL=true;toast(IN_PREVIEW?'Reconnaissance indisponible dans l’aperçu':'Reconnaissance impossible pour l’instant (connexion ?)')}return null});
+
+/* ---------- détourage en arrière-plan, après l'enregistrement ---------- */
+let CUT_TODO=0,CUT_DONE=0;
+function cutLater(id){
+ if(!S.cut)return;const i0=item(id);if(!i0||i0.cut||!photos.get(id))return;
+ CUT_TODO++;
+ queued(async()=>{
+  const i=item(id),p=photos.get(id);if(!i||i.cut||!p||!S.cut)return;
+  const img=new Image();await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=p});
+  const c=document.createElement('canvas');c.width=img.width;c.height=img.height;c.getContext('2d').drawImage(img,0,0);
+  const r=await cutout(c);if(!r||!item(id)||photos.get(id)!==p)return;
+  DB.set('orig:'+id,p);ORIG.add(id); // la photo d'origine reste disponible dans la fiche
+  photos.set(id,r.url);DB.set('photo:'+id,r.url);i.cut=true;save();CUT_DONE++;
+  if($('#sheet').hidden&&VIEW!=='ajout')render();
+ }).catch(e=>console.warn(e)).finally(()=>{CUT_TODO--;if(!CUT_TODO){if(CUT_DONE)toast(CUT_DONE>1?`Fonds retirés (${CUT_DONE} photos)`:'Fond retiré');CUT_DONE=0}});
 }
-async function analyze(file){const {canvas}=await compress(file);return analyzeCanvas(canvas)}
+const ORIG=new Set(); // vêtements dont la photo d'origine (avec le fond) est gardée

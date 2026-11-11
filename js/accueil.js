@@ -17,7 +17,7 @@ function onbSheet(){
   ()=>`<h2 style="margin-top:0">Ta penderie</h2><p>Le plus rapide : <b>l’inventaire express</b>. Tu comptes tes vêtements et tes dessous en 2 minutes, et tu ajoutes les photos petit à petit.</p>
    <button class="btn block" data-a="onbInv">⚡ Inventaire express</button><p class="label">Ou en photos, quand tu veux</p><ul style="padding-left:18px;margin:0 0 12px">
    <li>Pose chaque vêtement à plat sur un fond uni (lit, parquet).</li><li>Une pièce par photo, bien éclairée.</li>
-   <li>Le plus rapide : « Scanner plusieurs vêtements d’un coup » depuis ta galerie.</li></ul>
+   <li>Enchaîne les photos, puis appuie sur OK : tu vérifies tout d’un coup.</li></ul>
    <p class="tiny">Tu peux commencer par 10 pièces : ça suffit pour les premières tenues.</p>`];
  const last=ONB===steps.length-1;
  sheet(`<p class="tiny" style="margin:0 0 8px">${ONB+1} / ${steps.length}</p>${steps[ONB]()}

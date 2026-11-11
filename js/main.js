@@ -14,10 +14,14 @@ function route(){
  const h=location.hash.slice(1);const v=VIEWS[h]?h:'matin';
  if(v!=='ajout'&&EDIT){EDIT=null;DR=null}
  // le scanner ne survit pas à un changement d'écran : on coupe la caméra
- if($('#scan')){const m=SCAN&&SCAN.mode;scanClose();if(m==='batch'&&BATCH){if(!BATCH.total)BATCH=null;else BATCH.busy=SCAN.pending>0}}
+ // (les photos déjà prises ne sont pas perdues : elles partent dans la liste à vérifier)
+ if($('#scan')){const shots=SCAN?SCAN.shots:[];scanClose();SCAN=null;if(shots.length){BATCH=BATCH||{items:[]};takeShots(shots)}}
  const prev=VIEW;VIEW=v;closeSheet();render();window.scrollTo({top:0});
- // les modèles d'IA ne restent en mémoire que sur l'écran « Ajouter »
- if(v==='ajout')warmModels();else if(prev==='ajout')releaseModels();
+ // « Ajouter » : l'appareil photo s'ouvre tout de suite, sauf si une fiche ou une liste est en cours
+ if(v==='ajout'&&prev!=='ajout'&&!NOSCAN&&!EDIT&&!DR&&!BATCH)scanOpen();
+ NOSCAN=false;
+ // les modèles d'IA ne restent pas en mémoire hors de l'écran « Ajouter »
+ if(prev==='ajout'&&v!=='ajout')releaseModels();
 }
 // retour au premier plan : si on a changé de jour, l'écran du matin repart de zéro (météo, idées, tenue du jour)
 let DAY=todayKey();
@@ -36,7 +40,8 @@ window.addEventListener('hashchange',route);
  // on affiche d'abord, les photos arrivent ensuite (lues toutes ensemble)
  route();
  if(!S.onboarded&&!S.items.length){ONB=0;onbSheet()}
- const ks=(await DB.keys()).map(String).filter(k=>/^(photo|sq|look):/.test(k));
+ const all=(await DB.keys()).map(String);all.forEach(k=>{if(k.startsWith('orig:'))ORIG.add(k.slice(5))});
+ const ks=all.filter(k=>/^(photo|sq|look):/.test(k));
  const vals=await Promise.all(ks.map(k=>DB.get(k)));
  ks.forEach((k,n)=>{const p=vals[n];if(!p)return;const c=k.indexOf(':'),id=k.slice(c+1),t=k.slice(0,c);(t==='photo'?photos:t==='sq'?squares:lookPhotos).set(id,p)});
  if(ks.length&&VIEW!=='ajout'&&$('#sheet').hidden)render();

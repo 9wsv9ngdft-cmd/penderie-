@@ -102,7 +102,6 @@ function vPenderie(){
  // un portant par catégorie : les vêtements pendent à leur cintre et défilent sur le côté
  else h+=CATS.map(c=>{const its=list.filter(i=>i.cat===c.id);if(!its.length)return'';
   return `<section class="rail"><div class="rail-head"><h2>${c.plural}</h2><span class="tiny">${its.length}</span></div><div class="rail-row">${its.map(hangCard).join('')}</div></section>`}).join('');
- h+=`<a class="fab" href="#ajout" aria-label="Ajouter">+</a>`;
  return h;
 }
 
@@ -115,28 +114,35 @@ function hangCard(i){
 }
 function newDraft(){return{name:'',cat:'haut',color:'noir',warmth:2,waterproof:false,origin:null,price:null,season:'toutes',wash:'',occ:[],state:'propre',max:null,photo:null}}
 function vBatch(){
- if(BATCH.busy)return `<p class="eyebrow">Analyse en cours</p><h1>${BATCH.done}/${BATCH.total}</h1><div class="bar"><i style="width:${BATCH.done/BATCH.total*100}%"></i></div><p class="tiny">Tout se passe sur ton téléphone.</p>`;
- return `<p class="eyebrow">Vérifie et corrige</p><h1>${BATCH.items.length} vêtement${BATCH.items.length>1?'s':''}</h1><p class="tiny" style="margin-top:-8px">J’ai deviné ce que j’ai pu. Touche un champ pour corriger.</p>
- ${BATCH.items.map((b,k)=>`<div class="card row" style="flex-wrap:nowrap;align-items:flex-start;gap:12px"><div class="ph mini" style="width:74px;background-image:url('${U(b.sq||b.photo)}')"></div><div style="flex:1;min-width:0;display:grid;grid-template-columns:minmax(0,1fr);gap:6px">
-  <input type="text" data-bi="${k}" data-bf="name" value="${esc(b.name)}">
-  <div class="row" style="gap:6px;flex-wrap:nowrap"><select data-bi="${k}" data-bf="cat">${CATS.map(c=>`<option value="${c.id}" ${b.cat===c.id?'selected':''}>${c.label}</option>`).join('')}</select>
-  <select data-bi="${k}" data-bf="color">${COLORS.map(([n])=>`<option ${b.color===n?'selected':''}>${n}</option>`).join('')}</select></div>
-  ${b.guessed?'':`<span class="tiny">Type non reconnu : à choisir</span>`}</div>
-  <button class="btn sm ghost" data-a="batchDrop" data-k="${k}" aria-label="Retirer">✕</button></div>`).join('')}
- <button class="btn block" data-a="batchSave">Tout ajouter (${BATCH.items.length})</button><div class="spacer"></div><button class="btn ghost block" data-a="batchCancel">Annuler</button>`;
+ const n=BATCH.items.length,wait=BATCH.items.filter(b=>b.pending).length;
+ return `<p class="eyebrow">Vérifie et corrige</p><h1>${n} vêtement${n>1?'s':''}</h1>
+ <p class="tiny" style="margin-top:-8px">${wait?`Reconnaissance en cours (${n-wait}/${n})… Tu peux déjà corriger ou tout ajouter : la suite se complète toute seule.`:S.ai?'J’ai deviné ce que j’ai pu. Touche un champ pour corriger.':'Choisis le type de chaque vêtement. La reconnaissance automatique s’active dans Réglages.'}</p>
+ ${BATCH.items.map((b,k)=>`<div class="card row" style="flex-wrap:nowrap;align-items:flex-start;gap:12px">${b.photo?`<div class="ph mini" role="img" aria-label="Photo ${k+1}" style="width:74px;background-image:url('${U(b.sq||b.photo)}')"></div>`:''}<div style="flex:1;min-width:0;display:grid;grid-template-columns:minmax(0,1fr);gap:6px">
+  <input type="text" data-bi="${k}" data-bf="name" value="${esc(b.name)}" aria-label="Nom du vêtement ${k+1}">
+  <div class="row" style="gap:6px;flex-wrap:nowrap"><select data-bi="${k}" data-bf="cat" aria-label="Catégorie">${CATS.map(c=>`<option value="${c.id}" ${b.cat===c.id?'selected':''}>${c.label}</option>`).join('')}</select>
+  <select data-bi="${k}" data-bf="color" aria-label="Couleur">${COLORS.map(([c])=>`<option ${b.color===c?'selected':''}>${c}</option>`).join('')}</select></div>
+  ${b.pending?`<span class="tiny">Reconnaissance…</span>`:b.guessed||!S.ai?'':`<span class="tiny">Type non reconnu : à choisir</span>`}</div>
+  <button class="btn sm ghost" data-a="batchDrop" data-k="${k}" aria-label="Retirer la photo ${k+1}">✕</button></div>`).join('')}
+ <button class="btn block" data-a="batchSave">Tout ajouter (${n})</button><div class="spacer"></div>
+ <div class="row"><button class="btn soft" style="flex:1" data-a="scanOpen">Encore des photos</button><button class="btn ghost" style="flex:1" data-a="batchCancel">Annuler</button></div>`;
+}
+// « Ajouter » sans rien en cours : la caméra s'ouvre d'elle-même ; si on la ferme, voici les autres façons d'ajouter
+function vAjoutStart(){
+ return `<p class="eyebrow">Nouveau vêtement</p><h1>Ajouter</h1>
+ <button class="btn big block" data-a="scanOpen" style="margin-bottom:10px">📷 Prendre des photos</button>
+ <label class="btn soft block" style="margin-bottom:10px">Choisir dans la galerie<input type="file" accept="image/*" multiple id="galStart" class="sr"></label>
+ <div class="row" style="flex-wrap:nowrap"><button class="btn ghost" style="flex:1" data-a="manualAdd">Sans photo</button><button class="btn ghost" style="flex:1" data-a="invOpen">⚡ Inventaire express</button></div>
+ <p class="tiny" style="margin-top:14px">Une photo ou plusieurs d’affilée : appuie sur OK quand tu as fini. La reconnaissance du type et le détourage se règlent dans <a href="#reglages">Réglages</a>${S.cut?' ; le fond est retiré après l’enregistrement, sans te faire attendre':''}.</p>`;
 }
 function vAjout(){
  if(BATCH)return vBatch();
- if(!DR){if(EDIT){const i=item(EDIT);DR={...i,photo:photos.get(i.id)||null}}else DR=newDraft()}
+ if(!DR&&!EDIT)return vAjoutStart();
+ if(!DR){const i=item(EDIT);DR={...i,photo:photos.get(i.id)||null}}
  const m=DR.max??cat(DR.cat).max;
  return `<p class="eyebrow">${EDIT?'Modifier':'Nouveau vêtement'}</p><h1>${EDIT?esc(DR.name):'Ajouter'}</h1>
- ${EDIT?'':`<div class="card"><label class="toggle" style="border:0;padding:0;gap:12px"><span><b>Reconnaissance auto du type</b><br><span class="tiny">Reconnaît le type, la matière et le motif. Modèle téléchargé <b>une seule fois</b> (~150 Mo, en Wi-Fi de préférence), puis tout est analysé sur ton téléphone : aucune photo ne sort. La couleur, elle, est toujours détectée.</span><br><span class="tiny" id="aistat" style="color:var(--moss);font-weight:600">${esc(AI_MSG)}</span></span><input type="checkbox" id="aitog" ${S.ai?'checked':''}></label></div>
- <div class="card"><label class="toggle" style="border:0;padding:0;gap:12px"><span><b>Détourage automatique</b><br><span class="tiny">Retire le fond (lit, parquet…) et pose le vêtement sur un fond uni, façon catalogue. Modèle téléchargé une fois (~45 Mo), traitement sur ton téléphone, quelques secondes par photo.</span></span><input type="checkbox" id="cuttog" ${S.cut?'checked':''}></label><span class="tiny" id="cutstat" style="color:var(--moss);font-weight:600">${esc(CUT_MSG)}</span></div>
- <button class="btn block" data-a="invOpen" style="margin-bottom:10px">⚡ Inventaire express (2 min, sans photo)</button>
- <button class="btn soft block" data-a="scanOpen" data-v="batch" style="margin-bottom:14px">📷 Scanner mes vêtements, en rafale</button>`}
- <label class="photo-drop"><div class="ph" id="prev" ${DR.photo?`style="background-image:url('${U(DR.photo)}')"`:''}></div><input type="file" accept="image/*" capture="environment" id="pic"><span class="btn sm soft" style="margin-top:${DR.photo?10:0}px">${DR.photo?'Changer la photo':'📷 Prendre une photo'}</span>${DR.orig?`<div class="row" style="justify-content:center;margin-top:10px"><button class="btn sm ghost" data-a="swapPhoto">${DR.cutOn===false?'Retirer le fond':'Garder le fond d’origine'}</button></div>`:''}
- <div class="tiny" style="margin-top:8px">${DR.detected?`<b>Détecté : ${esc(DR.detected)}</b> · vérifie ci-dessous`:'Reste sur ton téléphone, compressée à ~60 Ko.'}</div></label>
- <div class="row" style="margin-top:8px;flex-wrap:nowrap"><button class="btn sm block" style="flex:1" data-a="scanOpen" data-v="single">📷 Scanner</button><button class="btn sm ghost" style="flex:1" data-a="pasteImg">Coller une image</button></div>
+ <label class="photo-drop"><div class="ph" id="prev" ${DR.photo?`style="background-image:url('${U(DR.photo)}')"`:''}></div><input type="file" accept="image/*" capture="environment" id="pic"><span class="btn sm soft" style="margin-top:${DR.photo?10:0}px">${DR.photo?'Changer la photo':'📷 Prendre une photo'}</span>
+ <div class="tiny" style="margin-top:8px" aria-live="polite">${DR.detected==='reconnaissance…'?'Reconnaissance du type en cours…':DR.detected?`<b>Détecté : ${esc(DR.detected)}</b> · vérifie ci-dessous.`:'Reste sur ton téléphone, compressée à ~60 Ko.'}${DR.photo&&S.cut&&!DR.cut?' Le fond sera retiré après l’enregistrement.':''}</div></label>
+ ${EDIT?'':`<div class="row" style="margin-top:8px;flex-wrap:nowrap"><button class="btn sm ghost" style="flex:1" data-a="pasteImg">Coller une image</button></div>`}
  <p class="label">Nom</p><input type="text" id="nm" value="${esc(DR.name)}" placeholder="ex. Pull marin rayé" autocomplete="off">
  <p class="label">Catégorie</p><div class="chips">${CATS.map(c=>`<button class="chip ${DR.cat===c.id?'on':''}" data-a="dr" data-k="cat" data-v="${c.id}">${c.label}</button>`).join('')}</div>
  <p class="label">Couleur dominante</p><div class="chips">${COLORS.map(([n,v])=>`<button class="chip ${DR.color===n?'on':''}" data-a="dr" data-k="color" data-v="${n}"><span class="dot" style="background:${v}"></span>${n}</button>`).join('')}</div>
@@ -196,6 +202,9 @@ function vBilan(){
 function vReglages(){
  let h=`<p class="eyebrow">Dress Up</p><h1>Réglages</h1>`;
  if(IN_PREVIEW)h+=`<div class="notice">Tu es dans l’<b>aperçu</b> : les données restent dans ce navigateur, mais la météo auto et l’export de sauvegarde sont désactivés. Pour la vraie app, installe la version complète (voir mon message).</div>`;
+ h+=`<h2>Photos</h2><div class="card"><label class="toggle" style="border:0;padding:0;gap:12px"><span><b>Reconnaissance auto du type</b><br><span class="tiny">Reconnaît le type, la matière et le motif. Modèle téléchargé <b>une seule fois</b> (~150 Mo, en Wi-Fi de préférence), puis tout est analysé sur ton téléphone : aucune photo ne sort. La couleur, elle, est toujours détectée.</span><br><span class="tiny" id="aistat" style="color:var(--moss);font-weight:600">${esc(AI_MSG)}</span></span><input type="checkbox" id="aitog" ${S.ai?'checked':''}></label></div>
+ <div class="card"><label class="toggle" style="border:0;padding:0;gap:12px"><span><b>Détourage automatique</b><br><span class="tiny">Retire le fond (lit, parquet…) et pose le vêtement sur un fond uni, façon catalogue. Il se fait après l’enregistrement, sans te faire attendre ; la photo d’origine reste disponible dans la fiche. Modèle téléchargé une fois (~45 Mo).</span></span><input type="checkbox" id="cuttog" ${S.cut?'checked':''}></label><span class="tiny" id="cutstat" style="color:var(--moss);font-weight:600">${esc(CUT_MSG)}</span></div>
+ `;
  h+=`<h2>Mon assistant</h2><div class="card">${botSettings(false)}<div class="spacer"></div><button class="btn sm" data-a="botSave">Enregistrer</button></div>
  <h2>Préférences</h2><div class="card"><p class="label" style="margin-top:0">Saison en cours</p><div class="chips">${['ete','hiver'].map(k=>`<button class="chip ${curSeason()===k?'on':''}" data-a="seasonSwitch" data-v="${k}">${SEASONS[k]}</button>`).join('')}</div>
   <p class="label">Ce qui te parle (pour les équivalences CO₂)</p><div class="chips">${Object.entries(INTERESTS).map(([k,l])=>`<button class="chip ${(S.interests||[]).includes(k)?'on':''}" data-a="interest" data-v="${k}">${l}</button>`).join('')}</div>
@@ -226,7 +235,7 @@ function menuSheet(){
  ${o('sessionOpen','🧵 Session réparation','')}
  ${o('favsOpen','♥ Tenues favorites','')}
  ${o('lookbookOpen','📸 Lookbook','Tes tenues en photo miroir')}
- ${o('go','⚙️ Réglages','Assistant, ville, machine, saison, sauvegarde, réinitialiser','data-v="reglages"')}`);
+ ${o('go','⚙️ Réglages','Photos, assistant, ville, machine, saison, sauvegarde','data-v="reglages"')}`);
 }
 
 /* ---------- feuilles (modales) ---------- */
@@ -287,7 +296,7 @@ function itemSheet(id){
  ${i.state==='reparer'?`<p class="tiny" style="margin-top:10px">Il ne sera plus proposé dans les tenues. Des astuces de réparation t’attendent dans Bilan.</p>`:''}
  <div class="spacer"></div>
  ${!i.boost&&(i.lastWorn?d>=30:true)?`<button class="btn soft block" data-a="boost" data-id="${i.id}">Me le proposer bientôt</button><div class="spacer"></div>`:''}
- ${photos.get(i.id)&&!i.cut?`<button class="btn sm soft block" data-a="cutItem" data-id="${i.id}" style="margin-bottom:10px">Retirer le fond de la photo</button>`:''}
+ ${photos.get(i.id)&&!i.cut?`<button class="btn sm soft block" data-a="cutItem" data-id="${i.id}" style="margin-bottom:10px">Retirer le fond de la photo</button>`:''}${i.cut&&ORIG.has(i.id)?`<button class="btn sm ghost block" data-a="origBack" data-id="${i.id}" style="margin-bottom:10px">Remettre la photo d’origine</button>`:''}
  <button class="btn sm ghost block" data-a="edit" data-id="${i.id}" style="margin-bottom:10px">Modifier</button>
  <button class="btn block" data-a="secondLife" data-id="${i.id}">♻︎ Seconde vie : vendre, donner…</button>`);
 }

@@ -28,7 +28,7 @@ const A={
   S.items=S.items.filter(i=>i.id!==id);S.log.forEach(l=>l.ids=without(l.ids));S.pins=without(S.pins);
   S.favs=(S.favs||[]).filter(f=>!f.ids.includes(id));(S.looks||[]).forEach(l=>l.ids=without(l.ids));(S.chals||[]).forEach(c=>{if(c.items)c.items=without(c.items)});
   if(S.trip)S.trip.list=S.trip.list.filter(x=>x.id!==id);S.plan=null;
-  photos.delete(id);DB.del('photo:'+id);squares.delete(id);DB.del('sq:'+id);OUTS=null;save();closeSheet();render()},
+  photos.delete(id);DB.del('photo:'+id);DB.del('orig:'+id);ORIG.delete(id);squares.delete(id);DB.del('sq:'+id);OUTS=null;save();closeSheet();render()},
  menuOpen(){menuSheet()},
  washOpen(el){washSheet(el&&el.dataset.v)},
  fStored(){F.stored=!F.stored;render()},
@@ -52,16 +52,19 @@ const A={
   try{const img=new Image();await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=p});
    const c=document.createElement('canvas');c.width=img.width;c.height=img.height;c.getContext('2d').drawImage(img,0,0);
    const r=await queued(()=>cutout(c));if(!r){toast('Vêtement pas assez net pour le détourer');return}
-   photos.set(i.id,r.url);DB.set('photo:'+i.id,r.url);i.cut=true;save();itemSheet(i.id);if(VIEW!=='ajout')render();toast('Fond retiré')}
+   DB.set('orig:'+i.id,p);ORIG.add(i.id);photos.set(i.id,r.url);DB.set('photo:'+i.id,r.url);i.cut=true;save();itemSheet(i.id);if(VIEW!=='ajout')render();toast('Fond retiré')}
   catch(e){toast(IN_PREVIEW?'Indisponible dans l’aperçu : marche dans la version en ligne':'Détourage impossible (connexion ?)')}},
+ async origBack(el){const id=el.dataset.id,i=item(id),p=await DB.get('orig:'+id);if(!i||!p){toast('Photo d’origine introuvable');return}
+  photos.set(id,p);DB.set('photo:'+id,p);DB.del('orig:'+id);ORIG.delete(id);i.cut=false;save();itemSheet(id);render();toast('Photo d’origine remise')},
  batchDrop(el){BATCH.items.splice(+el.dataset.k,1);if(!BATCH.items.length)BATCH=null;render()},
  batchCancel(){BATCH=null;render()},
  batchSave(){
-  document.querySelectorAll('[data-bi]').forEach(f=>{const b=BATCH.items[+f.dataset.bi];if(b)b[f.dataset.bf]=f.value});
-  for(const b of BATCH.items){const id=uid();
+  keepBatchInputs();const ids=[];
+  for(const b of BATCH.items){const id=uid();b.savedId=id;ids.push(id);
    S.items.push({id,name:b.name.trim()||`${cat(b.cat).label} ${b.color}`,cat:b.cat,color:b.color,warmth:b.warmth||2,waterproof:!!b.waterproof,origin:null,price:null,mat:b.mat||null,style:b.style||null,season:b.season||seasonGuess(b.name),state:'propre',max:null,added:todayKey(),wears:0,sinceWash:0,lastWorn:null});
    photos.set(id,b.photo);DB.set('photo:'+id,b.photo);saveSquare(id,b.sq)}
-  const n=BATCH.items.length;BATCH=null;OUTS=null;save();toast(n+' vêtements ajoutés');location.hash='penderie'},
+  const n=BATCH.items.length,wait=BATCH.items.some(b=>b.pending);BATCH=null;OUTS=null;save();ids.forEach(id=>cutLater(id));
+  toast(n+' vêtement'+(n>1?'s':'')+' ajouté'+(n>1?'s':'')+(wait?' · reconnaissance en cours':'')+(S.cut?' · fonds retirés petit à petit':''));location.hash='penderie'},
  washDo(el){const g=el&&el.dataset.g;if(g&&fullGroups().includes(g)){const st=S.stats||(S.stats={});st.fullWash=(st.fullWash||0)+1}
   const wu=$('#washUnder');if(wu&&wu.checked)Object.values(under()).forEach(x=>{x.clean=x.total});
   document.querySelectorAll('#sheet input[type=checkbox][value]:checked').forEach(c=>{const i=item(c.value);if(i){i.state='propre';i.sinceWash=0}});OUTS=null;save();closeSheet();render();toast('Tout beau tout propre')},
@@ -70,14 +73,16 @@ const A={
  maxInc(){const m=DR.max??cat(DR.cat).max;DR.max=Math.min(30,m+1);$('#maxv').textContent=fmtMax()},
  saveItem(el){
   DR.name=$('#nm').value.trim()||`${cat(DR.cat).label} ${DR.color}`;DR.ref=$('#ref').value.trim();DR.waterproof=$('#wp').checked;DR.price=parsePrice($('#price').value);DR.madeIn=$('#madeIn').value.trim();DR.ecoScore=parseInt($('#ecoScore').value)||null;const bt=$('#bought');if(bt)DR.boughtAt=bt.checked?(DR.boughtAt||todayKey()):null;if(DR.boughtAt&&!EDIT)DR.age=null;
-  const {photo,sq,touched,detected,orig,cutOn,fromWish,...data}=DR;if(orig)data.cut=cutOn!==false;
+  const {photo,sq,touched,detected,orig,cutOn,fromWish,autoName,...data}=DR;if(orig)data.cut=cutOn!==false;
   if(EDIT){const k=S.items.findIndex(i=>i.id===EDIT);S.items[k]={...S.items[k],...data}}
   else{data.id=uid();data.added=todayKey();data.wears=0;data.sinceWash=data.state==='porte'?1:0;data.lastWorn=null;S.items.push(data)}
   const id=EDIT||data.id;
   if(fromWish&&!EDIT){const w=(S.wishes||[]).find(x=>x.id===fromWish);if(w)w.decided={date:todayKey(),choice:'achete',itemId:id}}
+  const newPhoto=!!photo&&photos.get(id)!==photo;
   if(photo){photos.set(id,photo);DB.set('photo:'+id,photo)}
+  if(newPhoto){const i=item(id);if(i&&i.cut){i.cut=false;DB.del('orig:'+id);ORIG.delete(id)}}
   saveSquare(id,sq);
-  OUTS=null;save();
+  OUTS=null;save();if(newPhoto)cutLater(id);
   const name=DR.name,wasEdit=!!EDIT;EDIT=null;DR=null;
   const p3=!wasEdit&&activeChal('p333');
   if(el.dataset.more){render();window.scrollTo({top:0});toast('« '+name+' » ajouté')}
@@ -97,7 +102,7 @@ const A={
  },
  wipeAsk(){sheet(`<h2 style="margin-top:0">Tout effacer ?</h2><p>Vêtements, photos et historique seront supprimés de cet appareil. Pense à sauvegarder avant.</p><button class="btn clay block" data-a="wipeDo">Oui, tout effacer</button><div class="spacer"></div><button class="btn ghost block" data-a="close">Annuler</button>`)},
  async wipeDo(){for(const k of await DB.keys())DB.del(k);
-  photos.clear();squares.clear();lookPhotos.clear();LOOKSHOW.clear();OUTS=null;OIDX=0;EDIT=null;DR=null;BATCH=null;WD=null;INVD=null;TRIPD=null;P333=null;IMPORT=null;F={cat:'all',state:'all'};
+  photos.clear();squares.clear();lookPhotos.clear();LOOKSHOW.clear();ORIG.clear();OUTS=null;OIDX=0;EDIT=null;DR=null;BATCH=null;WD=null;INVD=null;TRIPD=null;P333=null;IMPORT=null;F={cat:'all',state:'all'};
   S={v:1,items:[],log:[],pins:[],city:null,wx:null,manual:null,undo:null};save();closeSheet();location.hash='matin';render()},
 };
 /* ---------- restaurer une sauvegarde : vérifier, confirmer, puis seulement remplacer ---------- */
@@ -217,7 +222,7 @@ async function importDo(){
  const j=IMPORT;IMPORT=null;if(!j||!j.state||!Array.isArray(j.state.items)){closeSheet();return}
  // on garde les étiquettes du modèle d'IA : elles ne font pas partie de la sauvegarde
  for(const k of await DB.keys())if(!String(k).startsWith('clip-'))DB.del(k);
- photos.clear();squares.clear();lookPhotos.clear();
+ photos.clear();squares.clear();lookPhotos.clear();ORIG.clear();
  S=j.state; // déjà contrôlé et reconstruit par cleanBackup
  Object.entries(j.photos).forEach(([id,p])=>{photos.set(id,p);DB.set('photo:'+id,p)});
  Object.entries(j.squares).forEach(([id,p])=>saveSquare(id,p));
@@ -256,26 +261,16 @@ function parsePrice(v){
 }
 function keepDraftInputs(){if(!DR)return;const mi=$('#madeIn'),es=$('#ecoScore');if(mi)DR.madeIn=mi.value;if(es)DR.ecoScore=parseInt(es.value)||null;const n=$('#nm'),r=$('#ref'),wp=$('#wp'),pr=$('#price');if(n)DR.name=n.value;if(r)DR.ref=r.value;if(wp)DR.waterproof=wp.checked;if(pr)DR.price=parsePrice(pr.value)}
 async function handleImage(blob){
- if(!DR)DR=newDraft();keepDraftInputs();
- if((S.ai&&!AI)||(S.cut&&!CUT))toast('Analyse…');else if(S.cut)toast('Détourage…');
- try{const {canvas}=await compress(blob);const m=Math.min(canvas.width,canvas.height)*.6;
-  const sq=cropSquare(canvas,(canvas.width-m)/2,(canvas.height-m)/2,m);
-  applyDraftResult(await processShot(canvas,sq))}catch(err){toast('Image illisible')}
+ try{const {shot}=await shotFromFile(blob);takeShots([shot])}catch(err){toast('Image illisible')}
 }
 document.addEventListener('paste',e=>{if(VIEW!=='ajout'||BATCH)return;const f=[...((e.clipboardData&&e.clipboardData.items)||[])].find(i=>i.type.startsWith('image/'));if(f){e.preventDefault();handleImage(f.getAsFile())}});
 document.addEventListener('change',e=>{if(e.target.id==='expLooks'){S.exportLooks=e.target.checked;save()}});
 document.addEventListener('change',async e=>{
  if(e.target.id==='pic'&&e.target.files[0])handleImage(e.target.files[0]);
- if(e.target.id==='multi'&&e.target.files.length){
-  const files=[...e.target.files];BATCH={busy:true,done:0,total:files.length,items:[]};render();
-  for(const f of files){try{const r=await analyze(f);
-    BATCH.items.push({photo:r.photo,color:r.color,cat:r.cat||'haut',guessed:!!r.cat,warmth:r.warmth||2,waterproof:!!r.waterproof,name:r.motif?r.noun:`${r.noun||(r.cat?cat(r.cat).label:'Vêtement')} ${r.color==='motif'?'à motif':r.color}`})}catch(err){}
-   BATCH.done++;render()}
-  BATCH.busy=false;if(!BATCH.items.length){BATCH=null;toast('Photos illisibles')}render()}
  if(e.target.id==='cuttog'){S.cut=e.target.checked;save();
-  if(S.cut){cutMsg('Chargement…');cutLoad().then(()=>{toast('Détourage prêt')}).catch(()=>{S.cut=false;save();toast(IN_PREVIEW?'Indisponible dans l’aperçu : marche dans la version en ligne':'Téléchargement impossible (connexion ?)');if(VIEW==='ajout')render()})}}
+  if(S.cut){cutMsg('Chargement…');cutLoad().then(()=>{toast('Détourage prêt')}).catch(()=>{S.cut=false;save();toast(IN_PREVIEW?'Indisponible dans l’aperçu : marche dans la version en ligne':'Téléchargement impossible (connexion ?)');render()})}}
  if(e.target.id==='aitog'){S.ai=e.target.checked;save();
-  if(S.ai){aiMsg('Chargement…');aiLoad().then(()=>{toast('Reconnaissance prête');if(VIEW==='ajout')render()}).catch(()=>{S.ai=false;save();toast(IN_PREVIEW?'Indisponible dans l’aperçu : marche dans la version complète':'Téléchargement impossible (connexion ?)');if(VIEW==='ajout')render()})}}
+  if(S.ai){aiMsg('Chargement…');aiLoad().then(()=>{toast('Reconnaissance prête');GUESS_FAIL=false}).catch(()=>{S.ai=false;save();toast(IN_PREVIEW?'Indisponible dans l’aperçu : marche dans la version complète':'Téléchargement impossible (connexion ?)');render()})}}
  if(e.target.id==='imp'&&e.target.files[0]){const f=e.target.files[0];e.target.value='';
   try{const j=JSON.parse(await f.text());const err=checkBackup(j);if(err)throw err;IMPORT=cleanBackup(j);importAsk()}catch(err){IMPORT=null;toast(typeof err==='string'?err:'Fichier non reconnu')}}
 });
