@@ -95,7 +95,8 @@ function vPenderie(){
  let list=act.filter(i=>(F.cat==='all'||i.cat===F.cat)&&(F.state==='all'||i.state===F.state));
  list.sort((a,b)=>(a.cat>b.cat?1:a.cat<b.cat?-1:0)||a.name.localeCompare(b.name));
  let h=`<p class="eyebrow">${all.length-nStored} pièce${all.length-nStored>1?'s':''} · mode ${SEASONS[curSeason()].toLowerCase()}</p><h1>Mon portant</h1>`;
- h+=seasonNotice()+laundryCard()+collectionBar()+`<div style="margin-bottom:12px">${underLine()}</div>`;
+ const toCut=cutPending().length;
+ h+=seasonNotice()+(toCut?`<button class="opt" data-a="cutNow" style="margin:0 0 12px">✂︎ <b>Détourer maintenant</b> <span class="tiny">${toCut} photo${toCut>1?'s':''} en attente</span></button>`:'')+laundryCard()+collectionBar()+`<div style="margin-bottom:12px">${underLine()}</div>`;
  h+=`<div class="row" style="margin-bottom:12px">${favs().length?`<button class="btn sm ghost" data-a="favsOpen">♥ Tenues favorites (${favs().length})</button>`:''}<button class="btn sm ghost" data-a="invOpen">⚡ Inventaire express</button><button class="btn sm ghost" data-a="tripOpen">${S.trip?'🧳 Ma valise':'🧳 Préparer une valise'}</button></div>`;
  h+=`<div class="chips scroll" role="group" aria-label="État">${[['all','Tout'],...Object.entries(STATES)].map(([v,l])=>`<button class="chip ${F.state===v?'on':''}" data-a="fState" data-v="${v}">${l}${v!=='all'?` · ${act.filter(i=>i.state===v).length}`:''}</button>`).join('')}${nStored||F.stored?`<button class="chip ${F.stored?'on':''}" data-a="fStored">Rangés · ${nStored}</button>`:''}</div>`;
  if(!list.length)h+=`<div class="empty"><p class="muted">${act.length?'Rien ici avec ce filtre.':'Aucun vêtement pour l’instant.'}</p></div>`;
@@ -132,7 +133,7 @@ function vAjoutStart(){
  <button class="btn big block" data-a="scanOpen" style="margin-bottom:10px">📷 Prendre des photos</button>
  <label class="btn soft block" style="margin-bottom:10px">Choisir dans la galerie<input type="file" accept="image/*" multiple id="galStart" class="sr"></label>
  <div class="row" style="flex-wrap:nowrap"><button class="btn ghost" style="flex:1" data-a="manualAdd">Sans photo</button><button class="btn ghost" style="flex:1" data-a="invOpen">⚡ Inventaire express</button></div>
- <p class="tiny" style="margin-top:14px">Une photo ou plusieurs d’affilée : appuie sur OK quand tu as fini. La reconnaissance du type et le détourage se règlent dans <a href="#reglages">Réglages</a>${S.cut?' ; le fond est retiré après l’enregistrement, sans te faire attendre':''}.</p>`;
+ <p class="tiny" style="margin-top:14px">Une photo ou plusieurs d’affilée : appuie sur OK quand tu as fini. La reconnaissance du type et le détourage se règlent dans <a href="#reglages">Réglages</a>${S.cut?' ; le fond est retiré plus tard, quand tu ne te sers pas de l’app':''}.</p>`;
 }
 function vAjout(){
  if(BATCH)return vBatch();
@@ -141,7 +142,7 @@ function vAjout(){
  const m=DR.max??cat(DR.cat).max;
  return `<p class="eyebrow">${EDIT?'Modifier':'Nouveau vêtement'}</p><h1>${EDIT?esc(DR.name):'Ajouter'}</h1>
  <label class="photo-drop"><div class="ph" id="prev" ${DR.photo?`style="background-image:url('${U(DR.photo)}')"`:''}></div><input type="file" accept="image/*" capture="environment" id="pic"><span class="btn sm soft" style="margin-top:${DR.photo?10:0}px">${DR.photo?'Changer la photo':'📷 Prendre une photo'}</span>
- <div class="tiny" style="margin-top:8px" aria-live="polite">${DR.detected==='reconnaissance…'?'Reconnaissance du type en cours…':DR.detected?`<b>Détecté : ${esc(DR.detected)}</b> · vérifie ci-dessous.`:'Reste sur ton téléphone, compressée à ~60 Ko.'}${DR.photo&&S.cut&&!DR.cut?' Le fond sera retiré après l’enregistrement.':''}</div></label>
+ <div class="tiny" style="margin-top:8px" aria-live="polite">${DR.detected==='reconnaissance…'?'Reconnaissance du type en cours…':DR.detected?`<b>Détecté : ${esc(DR.detected)}</b> · vérifie ci-dessous.`:'Reste sur ton téléphone, compressée à ~60 Ko.'}${DR.photo&&S.cut&&!DR.cut?' Le fond sera retiré plus tard, quand tu ne te sers pas de l’app.':''}</div></label>
  ${EDIT?'':`<div class="row" style="margin-top:8px;flex-wrap:nowrap"><button class="btn sm ghost" style="flex:1" data-a="pasteImg">Coller une image</button></div>`}
  <p class="label">Nom</p><input type="text" id="nm" value="${esc(DR.name)}" placeholder="ex. Pull marin rayé" autocomplete="off">
  <p class="label">Catégorie</p><div class="chips">${CATS.map(c=>`<button class="chip ${DR.cat===c.id?'on':''}" data-a="dr" data-k="cat" data-v="${c.id}">${c.label}</button>`).join('')}</div>
@@ -203,7 +204,7 @@ function vReglages(){
  let h=`<p class="eyebrow">Dress Up</p><h1>Réglages</h1>`;
  if(IN_PREVIEW)h+=`<div class="notice">Tu es dans l’<b>aperçu</b> : les données restent dans ce navigateur, mais la météo auto et l’export de sauvegarde sont désactivés. Pour la vraie app, installe la version complète (voir mon message).</div>`;
  h+=`<h2>Photos</h2><div class="card"><label class="toggle" style="border:0;padding:0;gap:12px"><span><b>Reconnaissance auto du type</b><br><span class="tiny">Reconnaît le type, la matière et le motif. Modèle téléchargé <b>une seule fois</b> (~150 Mo, en Wi-Fi de préférence), puis tout est analysé sur ton téléphone : aucune photo ne sort. La couleur, elle, est toujours détectée.</span><br><span class="tiny" id="aistat" style="color:var(--moss);font-weight:600">${esc(AI_MSG)}</span></span><input type="checkbox" id="aitog" ${S.ai?'checked':''}></label></div>
- <div class="card"><label class="toggle" style="border:0;padding:0;gap:12px"><span><b>Détourage automatique</b><br><span class="tiny">Retire le fond (lit, parquet…) et pose le vêtement sur un fond uni, façon catalogue. Il se fait après l’enregistrement, sans te faire attendre ; la photo d’origine reste disponible dans la fiche. Modèle téléchargé une fois (~45 Mo).</span></span><input type="checkbox" id="cuttog" ${S.cut?'checked':''}></label><span class="tiny" id="cutstat" style="color:var(--moss);font-weight:600">${esc(CUT_MSG)}</span></div>
+ <div class="card"><label class="toggle" style="border:0;padding:0;gap:12px"><span><b>Détourage automatique</b><br><span class="tiny">Retire le fond (lit, parquet…) et pose le vêtement sur un fond uni, façon catalogue. Il se fait quand l’app est ouverte et que tu n’y touches pas, ou d’un coup avec « Détourer maintenant » ; la photo d’origine reste disponible dans chaque fiche. Modèle téléchargé une fois (~45 Mo).</span></span><input type="checkbox" id="cuttog" ${S.cut?'checked':''}></label>${S.cut?`<button class="btn sm soft" data-a="cutNow" style="margin-top:10px">✂︎ Détourer maintenant${cutPending().length?` (${cutPending().length})`:''}</button><br>`:''}<span class="tiny" id="cutstat" style="color:var(--moss);font-weight:600">${esc(CUT_MSG)}</span></div>
  `;
  h+=`<h2>Mon assistant</h2><div class="card">${botSettings(false)}<div class="spacer"></div><button class="btn sm" data-a="botSave">Enregistrer</button></div>
  <h2>Préférences</h2><div class="card"><p class="label" style="margin-top:0">Saison en cours</p><div class="chips">${['ete','hiver'].map(k=>`<button class="chip ${curSeason()===k?'on':''}" data-a="seasonSwitch" data-v="${k}">${SEASONS[k]}</button>`).join('')}</div>

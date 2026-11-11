@@ -131,7 +131,7 @@ function queued(fn){
  return run;
 }
 async function releaseModels(){
- if(BUSY||$('#scan'))return;
+ if(BUSY||$('#scan')||CUT_RUN||(S.cut&&cutPending().length&&VIEW!=='ajout'))return; // modèle gardé tant qu'il reste des photos à détourer
  if(AI){const a=AI;AI=null;AI_LOADING=null;aiMsg('');try{await a.vm.dispose()}catch(e){}}
  if(CUT){const c=CUT;CUT=null;CUT_LOADING=null;cutMsg('');try{await c.model.dispose()}catch(e){}}
 }
@@ -139,19 +139,58 @@ async function releaseModels(){
 let GUESS_FAIL=false;
 const guess=canvas=>!S.ai?Promise.resolve(null):queued(()=>aiGuess(canvas)).catch(e=>{console.warn(e);if(!GUESS_FAIL){GUESS_FAIL=true;toast(IN_PREVIEW?'Reconnaissance indisponible dans l’aperçu':'Reconnaissance impossible pour l’instant (connexion ?)')}return null});
 
-/* ---------- détourage en arrière-plan, après l'enregistrement ---------- */
-let CUT_TODO=0,CUT_DONE=0;
-function cutLater(id){
- if(!S.cut)return;const i0=item(id);if(!i0||i0.cut||!photos.get(id))return;
- CUT_TODO++;
- queued(async()=>{
-  const i=item(id),p=photos.get(id);if(!i||i.cut||!p||!S.cut)return;
+/* ---------- détourage : quand l'app est ouverte mais qu'on n'y touche pas, ou à la demande ----------
+   La photo est enregistrée telle quelle. Le vêtement est marqué « à détourer » (cutTodo) ; le détourage est appliqué
+   directement, la photo d'origine reste disponible dans la fiche. Jamais pendant la prise de vue ni sur l'écran Ajouter. */
+const IDLE_MS=15000;let LAST_TOUCH=Date.now(),CUT_RUN=null,CUT_PAUSED=false,IDLE_DONE=0;
+['pointerdown','touchstart','keydown','wheel','scroll'].forEach(t=>window.addEventListener(t,()=>{LAST_TOUCH=Date.now()},{passive:true,capture:true}));
+const cutPending=()=>S.cut?S.items.filter(i=>i.cutTodo&&!i.cut&&!i.removed&&photos.get(i.id)):[];
+function markCut(id){const i=item(id);if(S.cut&&i&&!i.cut&&!i.cutKeep&&photos.get(id))i.cutTodo=true}
+// détoure un vêtement (une photo à la fois, dans la file d'analyse)
+function cutOne(id){
+ return queued(async()=>{
+  const i=item(id),p=photos.get(id);if(!i||i.cut||!p||!S.cut){if(i)i.cutTodo=false;return false}
   const img=new Image();await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=p});
   const c=document.createElement('canvas');c.width=img.width;c.height=img.height;c.getContext('2d').drawImage(img,0,0);
-  const r=await cutout(c);if(!r||!item(id)||photos.get(id)!==p)return;
+  const r=await cutout(c);
+  if(!item(id)||photos.get(id)!==p)return false;
+  i.cutTodo=false;
+  if(!r){i.cutFail=true;save();return false} // vêtement pas assez net : on n'insiste pas
   DB.set('orig:'+id,p);ORIG.add(id); // la photo d'origine reste disponible dans la fiche
-  photos.set(id,r.url);DB.set('photo:'+id,r.url);i.cut=true;save();CUT_DONE++;
-  if($('#sheet').hidden&&VIEW!=='ajout')render();
- }).catch(e=>console.warn(e)).finally(()=>{CUT_TODO--;if(!CUT_TODO){if(CUT_DONE)toast(CUT_DONE>1?`Fonds retirés (${CUT_DONE} photos)`:'Fond retiré');CUT_DONE=0}});
+  photos.set(id,r.url);DB.set('photo:'+id,r.url);i.cut=true;save();return true;
+ });
 }
+// au repos : un vêtement toutes les quelques secondes, tant que personne ne touche l'écran
+setInterval(()=>{
+ if(!S.cut||CUT_RUN||CUT_PAUSED||BUSY||document.hidden||$('#scan')||VIEW==='ajout'||!$('#sheet').hidden||Date.now()-LAST_TOUCH<IDLE_MS)return;
+ const next=cutPending()[0];
+ if(!next){if(IDLE_DONE){toast(IDLE_DONE>1?`${IDLE_DONE} photos détourées · la photo d’origine reste dans chaque fiche`:'1 photo détourée · la photo d’origine reste dans sa fiche');IDLE_DONE=0;if(VIEW!=='ajout')render()}return}
+ CUT_RUN={idle:true};
+ cutOne(next.id).then(ok=>{if(ok)IDLE_DONE++}).catch(e=>{console.warn(e);CUT_PAUSED=true}) // modèle indisponible : on réessaiera au prochain lancement
+  .finally(()=>{CUT_RUN=null;if(!cutPending().length&&!$('#scan')&&VIEW!=='ajout')releaseModels()});
+},3000);
+// à la demande : tout d'un coup, avec une barre de progression
+function cutNowSheet(){
+ const R=CUT_RUN&&CUT_RUN.manual?CUT_RUN:null,n=cutPending().length;
+ if(R)return sheet(`<h2 style="margin-top:0">Détourage en cours</h2><p id="cutProg" aria-live="polite"><b>${R.done} / ${R.total}</b> photos</p><div class="bar"><i style="width:${R.total?R.done/R.total*100:0}%"></i></div>
+  <p class="tiny">Quelques secondes par photo. Tu peux poser ton téléphone ; garde l’app ouverte.</p><button class="btn ghost block" data-a="cutStop">${R.stop?'Arrêt après cette photo…':'Arrêter'}</button>`);
+ if(R===null&&CUT_DONE_MSG){const m=CUT_DONE_MSG;CUT_DONE_MSG='';return sheet(`<h2 style="margin-top:0">C’est fait</h2><p>${m}</p><p class="tiny">Un détourage ne te plaît pas ? Ouvre le vêtement, puis « Remettre la photo d’origine ».</p><button class="btn block" data-a="close">Voir ma penderie</button>`)}
+ sheet(`<h2 style="margin-top:0">Détourer mes photos</h2><p>${n?`<b>${n} photo${n>1?'s':''}</b> à détourer.`:'Toutes tes photos sont déjà détourées.'}</p>
+  <p class="tiny">Le fond est retiré et le vêtement posé sur un fond uni. La photo d’origine reste disponible dans chaque fiche. Sinon, ça se fait tout seul quand l’app est ouverte et que tu n’y touches pas.</p>
+  ${n?`<button class="btn block" data-a="cutGo">Détourer maintenant</button>`:''}`);
+}
+let CUT_DONE_MSG='';
+async function cutGo(){
+ if(CUT_RUN&&CUT_RUN.manual)return;
+ while(CUT_RUN)await new Promise(r=>setTimeout(r,300)); // laisse finir une photo commencée au repos
+ const list=cutPending().map(i=>i.id);if(!list.length){cutNowSheet();return}
+ const R=CUT_RUN={manual:true,total:list.length,done:0,ok:0,stop:false};CUT_PAUSED=false;cutNowSheet();
+ for(const id of list){if(R.stop)break;
+  try{if(await cutOne(id))R.ok++}catch(e){console.warn(e);toast(IN_PREVIEW?'Détourage indisponible dans l’aperçu':'Détourage impossible pour l’instant (connexion ?)');break}
+  R.done++;if($('#cutProg'))cutNowSheet()}
+ CUT_RUN=null;CUT_DONE_MSG=R.ok?`${R.ok} photo${R.ok>1?'s':''} détourée${R.ok>1?'s':''}${R.done-R.ok?` · ${R.done-R.ok} trop floue${R.done-R.ok>1?'s':''} pour être détourée${R.done-R.ok>1?'s':''}`:''}.`:'Aucune photo n’a pu être détourée.';
+ if(!$('#sheet').hidden)cutNowSheet();else{toast(CUT_DONE_MSG);CUT_DONE_MSG=''}
+ if(VIEW!=='ajout')render();releaseModels();
+}
+// (les boutons cutNow, cutGo, cutStop sont branchés dans scanner.js : la liste des actions A n'existe pas encore ici)
 const ORIG=new Set(); // vêtements dont la photo d'origine (avec le fond) est gardée

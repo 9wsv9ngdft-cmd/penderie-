@@ -52,10 +52,10 @@ const A={
   try{const img=new Image();await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=p});
    const c=document.createElement('canvas');c.width=img.width;c.height=img.height;c.getContext('2d').drawImage(img,0,0);
    const r=await queued(()=>cutout(c));if(!r){toast('Vêtement pas assez net pour le détourer');return}
-   DB.set('orig:'+i.id,p);ORIG.add(i.id);photos.set(i.id,r.url);DB.set('photo:'+i.id,r.url);i.cut=true;save();itemSheet(i.id);if(VIEW!=='ajout')render();toast('Fond retiré')}
+   DB.set('orig:'+i.id,p);ORIG.add(i.id);photos.set(i.id,r.url);DB.set('photo:'+i.id,r.url);i.cut=true;i.cutTodo=false;i.cutKeep=false;save();itemSheet(i.id);if(VIEW!=='ajout')render();toast('Fond retiré')}
   catch(e){toast(IN_PREVIEW?'Indisponible dans l’aperçu : marche dans la version en ligne':'Détourage impossible (connexion ?)')}},
  async origBack(el){const id=el.dataset.id,i=item(id),p=await DB.get('orig:'+id);if(!i||!p){toast('Photo d’origine introuvable');return}
-  photos.set(id,p);DB.set('photo:'+id,p);DB.del('orig:'+id);ORIG.delete(id);i.cut=false;save();itemSheet(id);render();toast('Photo d’origine remise')},
+  photos.set(id,p);DB.set('photo:'+id,p);DB.del('orig:'+id);ORIG.delete(id);i.cut=false;i.cutTodo=false;i.cutKeep=true;save(); /* on ne la redétourera pas toute seule */itemSheet(id);render();toast('Photo d’origine remise')},
  batchDrop(el){BATCH.items.splice(+el.dataset.k,1);if(!BATCH.items.length)BATCH=null;render()},
  batchCancel(){BATCH=null;render()},
  batchSave(){
@@ -63,8 +63,8 @@ const A={
   for(const b of BATCH.items){const id=uid();b.savedId=id;ids.push(id);
    S.items.push({id,name:b.name.trim()||`${cat(b.cat).label} ${b.color}`,cat:b.cat,color:b.color,warmth:b.warmth||2,waterproof:!!b.waterproof,origin:null,price:null,mat:b.mat||null,style:b.style||null,season:b.season||seasonGuess(b.name),state:'propre',max:null,added:todayKey(),wears:0,sinceWash:0,lastWorn:null});
    photos.set(id,b.photo);DB.set('photo:'+id,b.photo);saveSquare(id,b.sq)}
-  const n=BATCH.items.length,wait=BATCH.items.some(b=>b.pending);BATCH=null;OUTS=null;save();ids.forEach(id=>cutLater(id));
-  toast(n+' vêtement'+(n>1?'s':'')+' ajouté'+(n>1?'s':'')+(wait?' · reconnaissance en cours':'')+(S.cut?' · fonds retirés petit à petit':''));location.hash='penderie'},
+  const n=BATCH.items.length,wait=BATCH.items.some(b=>b.pending);BATCH=null;OUTS=null;save();ids.forEach(markCut);save();
+  toast(n+' vêtement'+(n>1?'s':'')+' ajouté'+(n>1?'s':'')+(wait?' · reconnaissance en cours':'')+(S.cut?' · fonds retirés plus tard, quand tu ne te sers pas de l’app':''));location.hash='penderie'},
  washDo(el){const g=el&&el.dataset.g;if(g&&fullGroups().includes(g)){const st=S.stats||(S.stats={});st.fullWash=(st.fullWash||0)+1}
   const wu=$('#washUnder');if(wu&&wu.checked)Object.values(under()).forEach(x=>{x.clean=x.total});
   document.querySelectorAll('#sheet input[type=checkbox][value]:checked').forEach(c=>{const i=item(c.value);if(i){i.state='propre';i.sinceWash=0}});OUTS=null;save();closeSheet();render();toast('Tout beau tout propre')},
@@ -82,7 +82,7 @@ const A={
   if(photo){photos.set(id,photo);DB.set('photo:'+id,photo)}
   if(newPhoto){const i=item(id);if(i&&i.cut){i.cut=false;DB.del('orig:'+id);ORIG.delete(id)}}
   saveSquare(id,sq);
-  OUTS=null;save();if(newPhoto)cutLater(id);
+  if(newPhoto)markCut(id);OUTS=null;save();
   const name=DR.name,wasEdit=!!EDIT;EDIT=null;DR=null;
   const p3=!wasEdit&&activeChal('p333');
   if(el.dataset.more){render();window.scrollTo({top:0});toast('« '+name+' » ajouté')}
@@ -148,7 +148,7 @@ function cleanItem(raw){
  put('madeIn',cs.str(i.madeIn,40));put('ref',cs.str(i.ref,300));put('size',cs.str(i.size,20));put('etat',ETATS.includes(i.etat)?i.etat:null);
  put('ecoScore',cs.int(i.ecoScore,0,1e5));put('resale',cs.num(i.resale,0,1e5));put('askPrice',cs.num(i.askPrice,0,1e5));
  put('repairKind',cs.key(i.repairKind,KINDS));put('repaired',cs.int(i.repaired,0,1e3));
- for(const k of ['boost','swap','cut','express'])put(k,i[k]===true);
+ for(const k of ['boost','swap','cut','express','cutTodo','cutKeep','cutFail'])put(k,i[k]===true);
  const rm=cs.obj(i.removed),rr=cs.key(rm.reason,setOf(REASONS));if(rr)o.removed={date:cs.date(rm.date)||todayKey(),reason:rr};
  const sale=cs.obj(i.sale),ss=cs.date(sale.since);if(ss)o.sale={since:ss,price:cs.num(sale.price,0,1e5)||null};
  const loan=cs.obj(i.loan),ls=cs.date(loan.since);if(ls&&cs.str(loan.to,40).trim())o.loan={to:cs.str(loan.to,40).trim(),since:ls};
@@ -268,7 +268,7 @@ document.addEventListener('change',e=>{if(e.target.id==='expLooks'){S.exportLook
 document.addEventListener('change',async e=>{
  if(e.target.id==='pic'&&e.target.files[0])handleImage(e.target.files[0]);
  if(e.target.id==='cuttog'){S.cut=e.target.checked;save();
-  if(S.cut){cutMsg('Chargement…');cutLoad().then(()=>{toast('Détourage prêt')}).catch(()=>{S.cut=false;save();toast(IN_PREVIEW?'Indisponible dans l’aperçu : marche dans la version en ligne':'Téléchargement impossible (connexion ?)');render()})}}
+  if(S.cut){S.items.forEach(i=>markCut(i.id));save();cutMsg('Chargement…');cutLoad().then(()=>{toast('Détourage prêt : tes photos seront détourées quand tu ne te sers pas de l’app')}).catch(()=>{S.cut=false;save();toast(IN_PREVIEW?'Indisponible dans l’aperçu : marche dans la version en ligne':'Téléchargement impossible (connexion ?)');render()})}}
  if(e.target.id==='aitog'){S.ai=e.target.checked;save();
   if(S.ai){aiMsg('Chargement…');aiLoad().then(()=>{toast('Reconnaissance prête');GUESS_FAIL=false}).catch(()=>{S.ai=false;save();toast(IN_PREVIEW?'Indisponible dans l’aperçu : marche dans la version complète':'Téléchargement impossible (connexion ?)');render()})}}
  if(e.target.id==='imp'&&e.target.files[0]){const f=e.target.files[0];e.target.value='';

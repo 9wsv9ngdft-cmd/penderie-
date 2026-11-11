@@ -7,7 +7,6 @@ const SQ=400;
 let SCAN=null; // {stream, shots:[…]}
 
 function cropSquare(src,x,y,s){const c=document.createElement('canvas');c.width=c.height=SQ;c.getContext('2d').drawImage(src,x,y,s,s,0,0,SQ,SQ);return c}
-function downscale(src,w,h,max=640){const k=Math.min(1,max/Math.max(w,h));const c=document.createElement('canvas');c.width=Math.round(w*k);c.height=Math.round(h*k);c.getContext('2d').drawImage(src,0,0,c.width,c.height);return c}
 const sqColor=c=>colorFromPixels(c.getContext('2d').getImageData(0,0,c.width,c.height));
 
 // Une prise = l'image entière (pour reconnaître le vêtement) + le carré du cadre (vignette « tissu », couleur).
@@ -17,8 +16,8 @@ const shotOf=(full,sq)=>({photo:full.toDataURL('image/jpeg',.72),sq:sq.toDataURL
 /* ---------- interface ---------- */
 function scanUI(){
  const el=document.createElement('div');el.id='scan';el.setAttribute('role','dialog');el.setAttribute('aria-label','Appareil photo');
- el.innerHTML=`<video playsinline autoplay muted></video><div class="scan-frame"><span class="scan-ok">✓ Prise !</span></div>
- <div class="scan-top"><button class="scan-x" data-a="scanClose" aria-label="Fermer">✕</button><span id="scanHint" aria-live="polite">Place le vêtement dans le carré</span></div>
+ el.innerHTML=`<video playsinline autoplay muted></video><div class="scan-frame"><span class="scan-label">Le vêtement entier</span><span class="scan-ok">✓ Prise !</span></div>
+ <div class="scan-top"><button class="scan-x" data-a="scanClose" aria-label="Fermer">✕</button><span id="scanHint" aria-live="polite">Une ou plusieurs photos à la suite, puis OK</span></div>
  <div class="scan-strip" id="scanStrip"></div>
  <div class="scan-bar"><label class="scan-side">Galerie<input type="file" accept="image/*" multiple id="scanGal" class="sr"></label>
  <button class="scan-shot" data-a="scanShot" aria-label="Prendre la photo"></button>
@@ -37,8 +36,8 @@ async function scanCam(retry=true){
   const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1920}},audio:false});
   if(SCAN!==mine||!$('#scan')||document.hidden){st.getTracks().forEach(t=>t.stop());return} // fermé entre-temps
   SCAN.stream=st;st.getVideoTracks().forEach(t=>t.addEventListener('ended',()=>{if(SCAN===mine&&SCAN.stream===st){SCAN.stream=null;if(!document.hidden)scanCam()}}));
-  const v=el.querySelector('video');v.srcObject=st;await v.play().catch(()=>{});
-  el.classList.remove('nocam');scanCount();
+  const v=el.querySelector('video');v.onloadedmetadata=placeFrame;v.srcObject=st;await v.play().catch(()=>{});
+  el.classList.remove('nocam');placeFrame();scanCount();
   // garde-fou : si l'image reste noire, on relance une fois, puis on le dit
   setTimeout(()=>{if(SCAN!==mine||SCAN.stream!==st||!$('#scan')||document.hidden||v.videoWidth)return;
    scanPause();if(retry)scanCam(false);else{$('#scanHint').textContent='La caméra ne répond pas : touche ✕ et rouvre-la. Tes photos sont gardées.';el.classList.add('nocam')}},2500);
@@ -47,6 +46,16 @@ async function scanCam(retry=true){
   el.classList.add('nocam');
  }finally{mine.starting=false}
 }
+// La caméra est affichée en entier (rien n'est rogné : c'était l'effet « zoom » qui obligeait à reculer).
+// Le cadre se pose sur l'image réellement visible et en couvre presque toute la largeur.
+function placeFrame(){
+ const v=$('#scan video'),f=$('#scan .scan-frame');if(!v||!f||!v.videoWidth)return;
+ const vr=v.getBoundingClientRect(),s=Math.min(vr.width/v.videoWidth,vr.height/v.videoHeight),dw=v.videoWidth*s,dh=v.videoHeight*s;
+ const w=Math.min(dw*.94,dh*.9*4/5),h=w*5/4;
+ f.style.width=w+'px';f.style.height=h+'px';f.style.aspectRatio='auto';
+ f.style.left=(vr.left+vr.width/2)+'px';f.style.top=(vr.top+vr.height/2)+'px';
+}
+window.addEventListener('resize',()=>{if($('#scan'))placeFrame()});
 function scanPause(){if(SCAN&&SCAN.stream){const st=SCAN.stream;SCAN.stream=null;st.getTracks().forEach(t=>t.stop())}}
 document.addEventListener('visibilitychange',()=>{if(!$('#scan'))return;if(document.hidden)scanPause();else scanCam()});
 function scanClose(){
@@ -57,19 +66,25 @@ function scanClose(){
 function scanCount(){
  const n=SCAN?SCAN.shots.length:0,d=$('#scanDone'),h=$('#scanHint');
  if(d){d.hidden=!n;d.textContent=`OK (${n})`}
- if(h&&!$('#scan').classList.contains('nocam'))h.textContent=n?`${n} photo${n>1?'s':''} · une autre, ou OK`:'Place le vêtement dans le carré';
+ if(h&&!$('#scan').classList.contains('nocam'))h.textContent=n?`${n} photo${n>1?'s':''} · continue, ou appuie sur OK`:'Une ou plusieurs photos à la suite, puis OK';
 }
 function addStrip(sq){const s=$('#scanStrip');if(!s)return;const i=document.createElement('div');i.style.backgroundImage=`url('${sq.toDataURL('image/jpeg',.6)}')`;s.prepend(i)}
 
-// prise de vue : le carré affiché à l'écran est converti en coordonnées de l'image vidéo
+// prise de vue : le cadre affiché à l'écran est converti en coordonnées de l'image vidéo
+function cropRect(src,x,y,w,h,max=640){
+ x=Math.max(0,x);y=Math.max(0,y);w=Math.min(w,src.width-x);h=Math.min(h,src.height-y);
+ const k=Math.min(1,max/Math.max(w,h)),c=document.createElement('canvas');c.width=Math.round(w*k);c.height=Math.round(h*k);
+ c.getContext('2d').drawImage(src,x,y,w,h,0,0,c.width,c.height);return c;
+}
 function shoot(){
  const v=$('#scan video'),f=$('#scan .scan-frame');if(!v||!v.videoWidth){toast('Caméra pas prête');return}
  const VW=v.videoWidth,VH=v.videoHeight,vr=v.getBoundingClientRect(),fr=f.getBoundingClientRect();
- const s=Math.max(vr.width/VW,vr.height/VH),ox=vr.left+(vr.width-VW*s)/2,oy=vr.top+(vr.height-VH*s)/2;
- const sx=(fr.left-ox)/s,sy=(fr.top-oy)/s,ss=fr.width/s;
+ const s=Math.min(vr.width/VW,vr.height/VH),ox=vr.left+(vr.width-VW*s)/2,oy=vr.top+(vr.height-VH*s)/2;
+ const fx=(fr.left-ox)/s,fy=(fr.top-oy)/s,fw=fr.width/s,fh=fr.height/s;
  const raw=document.createElement('canvas');raw.width=VW;raw.height=VH;raw.getContext('2d').drawImage(v,0,0);
- const sq=cropSquare(raw,Math.max(0,sx),Math.max(0,sy),Math.min(ss,VW,VH));
- SCAN.shots.push(shotOf(downscale(raw,VW,VH),sq));
+ const full=cropRect(raw,fx,fy,fw,fh);
+ const m=Math.min(fw,fh)*.55,sq=cropSquare(raw,Math.max(0,fx+(fw-m)/2),Math.max(0,fy+(fh-m)/2),m);
+ SCAN.shots.push(shotOf(full,sq));
  snap();addStrip(sq);scanCount();
 }
 async function shotFromFile(file){
@@ -136,6 +151,8 @@ document.addEventListener('change',e=>{const f=e.target;if(!f.dataset||f.dataset
 
 const saveSquare=(id,sq)=>{if(sq){squares.set(id,sq);DB.set('sq:'+id,sq)}};
 let NOSCAN=false; // évite de rouvrir la caméra quand on arrive sur « Ajouter » en venant d'elle
+// déjà sur « Ajouter » : toucher l'onglet rouvre la caméra (1 photo = nouvelle photo de la fiche en cours, plusieurs = dans la liste)
+document.addEventListener('click',e=>{const a=e.target.closest&&e.target.closest('#tabs a[data-v=ajout]');if(!a||VIEW!=='ajout')return;e.preventDefault();scanOpen()});
 
 Object.assign(A,{
  scanOpen(){scanOpen()},
@@ -145,6 +162,8 @@ Object.assign(A,{
  scanShot:shoot,
  scanDone(){const shots=SCAN?SCAN.shots:[];scanClose();SCAN=null;takeShots(shots)},
  manualAdd(){DR=newDraft();render();window.scrollTo({top:0})},
+ // détourage à la demande (fonctions dans ia.js)
+ cutNow:cutNowSheet,cutGo,cutStop(){if(CUT_RUN&&CUT_RUN.manual){CUT_RUN.stop=true;cutNowSheet()}},
 });
 document.addEventListener('change',async e=>{
  if((e.target.id!=='scanGal'&&e.target.id!=='galStart')||!e.target.files.length)return;
