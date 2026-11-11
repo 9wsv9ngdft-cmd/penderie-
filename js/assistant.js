@@ -116,7 +116,7 @@ function botPush(kind,v){
  const t=kind==='badge'?T({complice:`Pas mal du tout : badge ${esc(v.t)} débloqué 😎`,doux:`Bravo, tu as débloqué le badge ${esc(v.t)} 🌱`,sobre:`Badge débloqué : ${esc(v.t)}.`,pep:`WOUHOU ! Badge ${esc(v.t)} ! 🎉`}):v.t;
  msgPush({from:'bot',t});S.chatUnread=true;save();botBadge();
 }
-function botBadge(){const b=$('#botBtn');if(b){b.classList.toggle('unread',!!S.chatUnread);b.hidden=VIEW==='ajout'}}
+function botBadge(){const b=$('#botTab');if(b)b.classList.toggle('unread',!!S.chatUnread)}
 function actBtn([l,a,attrs]){
  if(a==='link')return `<a class="chip" href="${esc(attrs.href)}" target="_blank" rel="noopener">${esc(l)}</a>`;
  return `<button class="chip" data-a="${a}" ${Object.entries(attrs).map(([k,v])=>`data-${k}="${esc(v)}"`).join(' ')}>${esc(l)}</button>`;
@@ -125,7 +125,7 @@ function chatSheet(){
  S.chatUnread=false;save();botBadge();
  if(!chat().length)msgPush({from:'bot',t:`${T({complice:'Salut ! Moi c’est',doux:'Bonjour, je suis',sobre:'Je suis',pep:'Hello ! Moi c’est'})} ${esc(botName())}. ${T({complice:'Je connais ta penderie par cœur (et tes petites faiblesses 😏).',doux:'Je connais ta penderie et je suis là pour t’aider à faire de bons choix.',sobre:'Je connais ta penderie et ton budget.',pep:'Je connais ta penderie et on va faire des merveilles ensemble ! ✨'})} Écris-moi ou utilise le micro du clavier.`,acts:quick()});
  const last=chat()[chat().length-1];
- sheet(`<div class="row between" style="margin-bottom:6px"><h2 style="margin:0">💬 ${esc(botName())}</h2><span class="tiny">reste sur ton téléphone</span></div>
+ sheet(`<div class="row between" style="margin-bottom:6px"><h2 style="margin:0">💬 ${bot().name?esc(bot().name):'Ton personal shopper'}</h2><span class="tiny">reste sur ton téléphone</span></div>
  <div id="chatLog">${chat().map(m=>`<div class="msg ${m.from}">${m.t}${m.from==='bot'&&m.acts&&m.acts.length&&m===last?`<div class="chips" style="margin-top:8px">${m.acts.map(actBtn).join('')}</div>`:''}
   ${m.from==='bot'&&m!==chat()[0]?`<div class="fb">${m.fb?(m.fb>0?'👍':'👎'):`<button data-a="botFb" data-id="${m.id}" data-v="1" aria-label="Bonne réponse">👍</button><button data-a="botFb" data-id="${m.id}" data-v="-1" aria-label="Réponse à côté">👎</button>`}</div>`:''}</div>`).join('')}</div>
  <form class="row chatbar" data-f="chat" style="flex-wrap:nowrap"><input type="text" name="q" placeholder="Écris ou dicte avec 🎤" autocomplete="off"><button class="btn sm">Envoyer</button></form>`);
@@ -153,7 +153,7 @@ Object.assign(A,{
   msgPush({from:'bot',t:T({complice:'C’est noté. On en reparle dans 5 jours, et on verra si l’envie a tenu 😉',doux:'C’est noté dans tes envies. Prends le temps d’y réfléchir 🌿',sobre:'Ajouté aux envies.',pep:'Noté ! Rendez-vous dans 5 jours ! ⏳'})});chatSheet()},
  botDrop(){const st=S.stats||(S.stats={});st.botDrops=(st.botDrops||0)+1;msgPush({from:'bot',t:T({complice:'Sage décision. Ta penderie et la planète te disent merci 😌',doux:'Belle décision 🌱',sobre:'Noté.',pep:'Bravo ! Un achat évité, c’est ça la vraie mode 💚'})});chatSheet()},
  botBudget(el){bot().budget=+el.dataset.v;save();msgPush({from:'bot',t:`Budget fixé à ${eur(+el.dataset.v)} par mois. ${budgetLine(null)}`});chatSheet()},
- go(el){closeSheet();location.hash=el.dataset.v},
+ go(el){closeSheet();if(el.dataset.v==='ajout'&&VIEW==='ajout'&&typeof scanOpen==='function'&&!$('#scan'))scanOpen();else location.hash=el.dataset.v},
  botFb(el){const m=chat().find(x=>x.id===el.dataset.id);if(!m)return;m.fb=+el.dataset.v;const f=bot().fb||(bot().fb={up:0,down:0,streak:0});
   if(m.fb>0){f.up++;f.streak=0}else{f.down++;f.streak=(f.streak||0)+1}
   save();

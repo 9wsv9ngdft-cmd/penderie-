@@ -94,11 +94,10 @@ function vPenderie(){
  const all=active(),nStored=all.filter(stored).length,act=F.stored?all.filter(stored):all.filter(i=>!stored(i));
  let list=act.filter(i=>(F.cat==='all'||i.cat===F.cat)&&(F.state==='all'||i.state===F.state));
  list.sort((a,b)=>(a.cat>b.cat?1:a.cat<b.cat?-1:0)||a.name.localeCompare(b.name));
- let h=`<p class="eyebrow">${all.length-nStored} pièce${all.length-nStored>1?'s':''} · mode ${SEASONS[curSeason()].toLowerCase()}</p><h1>Mon portant</h1>`;
+ let h=`<p class="eyebrow">${all.length-nStored} pièce${all.length-nStored>1?'s':''} · mode ${SEASONS[curSeason()].toLowerCase()}</p><h1>Mon portant</h1><div class="row" style="margin:-4px 0 14px;flex-wrap:nowrap"><button class="btn" data-a="go" data-v="ajout" style="flex:1">＋ Ajouter des vêtements</button><button class="btn ghost" data-a="toolsOpen" aria-label="Outils de la penderie">Outils</button></div>`;
  const toCut=cutPending().length;
- h+=seasonNotice()+(toCut?`<button class="opt" data-a="cutNow" style="margin:0 0 12px">✂︎ <b>Détourer maintenant</b> <span class="tiny">${toCut} photo${toCut>1?'s':''} en attente</span></button>`:'')+laundryCard()+collectionBar()+`<div style="margin-bottom:12px">${underLine()}</div>`;
- h+=`<div class="row" style="margin-bottom:12px">${favs().length?`<button class="btn sm ghost" data-a="favsOpen">♥ Tenues favorites (${favs().length})</button>`:''}<button class="btn sm ghost" data-a="invOpen">⚡ Inventaire express</button><button class="btn sm ghost" data-a="tripOpen">${S.trip?'🧳 Ma valise':'🧳 Préparer une valise'}</button></div>`;
- h+=`<div class="chips scroll" role="group" aria-label="État">${[['all','Tout'],...Object.entries(STATES)].map(([v,l])=>`<button class="chip ${F.state===v?'on':''}" data-a="fState" data-v="${v}">${l}${v!=='all'?` · ${act.filter(i=>i.state===v).length}`:''}</button>`).join('')}${nStored||F.stored?`<button class="chip ${F.stored?'on':''}" data-a="fStored">Rangés · ${nStored}</button>`:''}</div>`;
+ h+=seasonNotice()+(toCut?`<button class="opt" data-a="cutNow" style="margin:0 0 12px">✂︎ <b>Détourer maintenant</b> <span class="tiny">${toCut} photo${toCut>1?'s':''} en attente</span></button>`:'')+laundryCard()+collectionBar()+(underLow()?`<div style="margin-bottom:12px">${underLine()}</div>`:'');
+ h+=`<div class="chips scroll" role="group" aria-label="État">${[['all','Tout'],...Object.entries(STATES)].filter(([v])=>v==='all'||F.state===v||act.some(i=>i.state===v)).map(([v,l])=>`<button class="chip ${F.state===v?'on':''}" data-a="fState" data-v="${v}">${l}${v!=='all'?` · ${act.filter(i=>i.state===v).length}`:''}</button>`).join('')}${nStored||F.stored?`<button class="chip ${F.stored?'on':''}" data-a="fStored">Rangés · ${nStored}</button>`:''}</div>`;
  if(!list.length)h+=`<div class="empty"><p class="muted">${act.length?'Rien ici avec ce filtre.':'Aucun vêtement pour l’instant.'}</p></div>`;
  // un portant par catégorie : les vêtements pendent à leur cintre et défilent sur le côté
  else h+=CATS.map(c=>{const its=list.filter(i=>i.cat===c.id);if(!its.length)return'';
@@ -122,6 +121,7 @@ function vBatch(){
   <input type="text" data-bi="${k}" data-bf="name" value="${esc(b.name)}" aria-label="Nom du vêtement ${k+1}">
   <div class="row" style="gap:6px;flex-wrap:nowrap"><select data-bi="${k}" data-bf="cat" aria-label="Catégorie">${CATS.map(c=>`<option value="${c.id}" ${b.cat===c.id?'selected':''}>${c.label}</option>`).join('')}</select>
   <select data-bi="${k}" data-bf="color" aria-label="Couleur">${COLORS.map(([c])=>`<option ${b.color===c?'selected':''}>${c}</option>`).join('')}</select></div>
+  ${b.dup?`<div class="dup"><p><b>Déjà dans ta penderie ?</b> Ça ressemble à ${b.dup.id?`« ${esc(b.dup.name)} »`:esc(b.dup.name)}.</p><div class="dup-pair"><figure><img src="${U(b.photo)}" alt="Nouvelle photo"><figcaption>Nouvelle</figcaption></figure><figure>${b.dup.photo&&U(b.dup.photo)?`<img src="${U(b.dup.photo)}" alt="${esc(b.dup.name)}">`:'<div class="dup-none">photo détourée</div>'}<figcaption>${b.dup.id?'Dans ta penderie':'Déjà prise'}</figcaption></figure></div><div class="row" style="flex-wrap:nowrap"><button class="btn sm" style="flex:1" data-a="batchDrop" data-k="${k}">Retirer</button><button class="btn sm ghost" style="flex:1" data-a="dupBatchKeep" data-k="${k}">C’est un autre</button></div></div>`:''}
   ${b.pending?`<span class="tiny">Reconnaissance…</span>`:b.guessed||!S.ai?'':`<span class="tiny">Type non reconnu : à choisir</span>`}</div>
   <button class="btn sm ghost" data-a="batchDrop" data-k="${k}" aria-label="Retirer la photo ${k+1}">✕</button></div>`).join('')}
  <button class="btn block" data-a="batchSave">Tout ajouter (${n})</button><div class="spacer"></div>
@@ -141,6 +141,7 @@ function vAjout(){
  if(!DR){const i=item(EDIT);DR={...i,photo:photos.get(i.id)||null}}
  const m=DR.max??cat(DR.cat).max;
  return `<p class="eyebrow">${EDIT?'Modifier':'Nouveau vêtement'}</p><h1>${EDIT?esc(DR.name):'Ajouter'}</h1>
+ ${DR.dup&&!EDIT?`<div class="dup"><p><b>Déjà dans ta penderie ?</b> Ça ressemble à ${DR.dup.id?`« ${esc(DR.dup.name)} »`:esc(DR.dup.name)}.</p><div class="dup-pair"><figure><img src="${U(DR.photo)}" alt="Nouvelle photo"><figcaption>Nouvelle</figcaption></figure><figure>${DR.dup.photo&&U(DR.dup.photo)?`<img src="${U(DR.dup.photo)}" alt="${esc(DR.dup.name)}">`:'<div class="dup-none">photo détourée</div>'}<figcaption>${DR.dup.id?'Dans ta penderie':'Déjà prise'}</figcaption></figure></div><div class="row" style="flex-wrap:nowrap"><button class="btn sm" style="flex:1" data-a="dupDraft">Ne pas l’ajouter</button><button class="btn sm ghost" style="flex:1" data-a="dupDraftKeep">C’est un autre</button></div></div>`:''}
  <label class="photo-drop"><div class="ph" id="prev" ${DR.photo?`style="background-image:url('${U(DR.photo)}')"`:''}></div><input type="file" accept="image/*" capture="environment" id="pic"><span class="btn sm soft" style="margin-top:${DR.photo?10:0}px">${DR.photo?'Changer la photo':'📷 Prendre une photo'}</span>
  <div class="tiny" style="margin-top:8px" aria-live="polite">${DR.detected==='reconnaissance…'?'Reconnaissance du type en cours…':DR.detected?`<b>Détecté : ${esc(DR.detected)}</b> · vérifie ci-dessous.`:'Reste sur ton téléphone, compressée à ~60 Ko.'}${DR.photo&&S.cut&&!DR.cut?' Le fond sera retiré plus tard, quand tu ne te sers pas de l’app.':''}</div></label>
  ${EDIT?'':`<div class="row" style="margin-top:8px;flex-wrap:nowrap"><button class="btn sm ghost" style="flex:1" data-a="pasteImg">Coller une image</button></div>`}
@@ -178,25 +179,28 @@ function vBilan(){
  const dormant=act.filter(i=>!stored(i)).filter(i=>{const d=daysSince(i.lastWorn);return i.lastWorn?d>=90:daysSince(i.added)>=30}).sort((a,b)=>(daysSince(b.lastWorn)??999)-(daysSince(a.lastWorn)??999));
  const rep=act.filter(i=>i.state==='reparer');
  const second=gone.filter(i=>['donne','vendu','recyclerie','transforme'].includes(i.removed.reason)).length;
- let h=`<p class="eyebrow">Ton empreinte</p><h1>Bilan</h1>
- <div class="stats">
+ let h=`<p class="eyebrow">Ton empreinte</p><h1>Bilan</h1>${co2Hero()}${co2Bilan()}
+ <h2>Ta penderie</h2><div class="stats">
   <div class="stat"><b>${act.length}</b><span>pièces dans la penderie</span></div>
   <div class="stat"><b>${wears}</b><span>ports enregistrés</span></div>
   <div class="stat"><b>${avg.toFixed(1).replace(".",",")}</b><span>ports en moyenne par pièce</span></div>
   <div class="stat"><b>${act.length?Math.round(sh/act.length*100):0}%</b><span>de seconde main</span></div>
  </div>
  <h2>Objectif 30 ports</h2><div class="card"><p>${thirty} pièce${thirty>1?'s':''} sur ${act.length} ont atteint 30 ports.</p><div class="bar"><i style="width:${act.length?thirty/act.length*100:0}%"></i></div><p class="tiny">Porter un vêtement plus longtemps est le geste qui réduit le plus son impact : l’essentiel de l’empreinte vient de la fabrication.</p></div>`;
- h+=badgesBilan()+costBilan()+co2Bilan();
- h+=`<h2>Un peu oubliés</h2>`;
- if(dormant.length)h+=`<p class="tiny" style="margin-top:-4px">Pas portés depuis 3 mois (ou jamais depuis leur ajout). Remets-les en avant… ou offre-leur une seconde vie.</p><div class="hlist">${dormant.map(i=>`<button class="it" data-a="open" data-id="${i.id}">${thumb(i)}<div class="nm">${esc(i.name)}</div><div class="mt">${i.lastWorn?daysSince(i.lastWorn)+' j':'jamais porté'}${i.boost?' · en avant':''}</div></button>`).join('')}</div>`;
- else h+=`<p class="muted">Rien qui dort. Toute ta penderie vit !</p>`;
- h+=`<h2>À réparer</h2>`;
- if(rep.length)h+=`<button class="btn block" data-a="sessionOpen" style="margin-bottom:12px">🧵 Lancer une session réparation (${rep.length})</button>`;
- if(rep.length)h+=`<div class="hlist">${rep.map(i=>`<button class="it" data-a="open" data-id="${i.id}">${thumb(i)}<div class="nm">${esc(i.name)}</div></button>`).join('')}</div><div class="spacer"></div>`;
- h+=`<div class="card">${REPAIRS.map(([t,p])=>`<details><summary>${t}</summary><p>${p}</p></details>`).join('')}</div>
+ h+=`<h2>Défis</h2>`+chalCards()+badgesBilan();
+ const fold=(t,n,body)=>`<details class="fold"><summary><h2>${t}</h2>${n?`<span class="tiny">${n}</span>`:''}</summary>${body}</details>`;
+ h+=fold('Coût par port','',costBilan().replace('<h2>Coût par port</h2>',''));
+ let b='';
+ if(dormant.length)b+=`<p class="tiny" style="margin-top:-4px">Pas portés depuis 3 mois (ou jamais depuis leur ajout). Remets-les en avant… ou offre-leur une seconde vie.</p><div class="hlist">${dormant.map(i=>`<button class="it" data-a="open" data-id="${i.id}">${thumb(i)}<div class="nm">${esc(i.name)}</div><div class="mt">${i.lastWorn?daysSince(i.lastWorn)+' j':'jamais porté'}${i.boost?' · en avant':''}</div></button>`).join('')}</div>`;
+ else b+=`<p class="muted">Rien qui dort. Toute ta penderie vit !</p>`;
+ h+=fold('Un peu oubliés',dormant.length||'',b);b='';
+ if(rep.length)b+=`<button class="btn block" data-a="sessionOpen" style="margin-bottom:12px">🧵 Lancer une session réparation (${rep.length})</button>`;
+ if(rep.length)b+=`<div class="hlist">${rep.map(i=>`<button class="it" data-a="open" data-id="${i.id}">${thumb(i)}<div class="nm">${esc(i.name)}</div></button>`).join('')}</div><div class="spacer"></div>`;
+ b+=`<div class="card">${REPAIRS.map(([t,p])=>`<details><summary>${t}</summary><p>${p}</p></details>`).join('')}</div>
  <div class="card"><h3>Ailleurs que dans la poubelle</h3><p class="tiny">Retoucheurs labellisés « bonus réparation » (une partie de la réparation est prise en charge), points de collecte textile, recycleries :</p>
  <p><a href="https://www.refashion.fr" target="_blank" rel="noopener">refashion.fr</a> · <a href="https://longuevieauxobjets.gouv.fr" target="_blank" rel="noopener">longuevieauxobjets.gouv.fr</a></p></div>`;
- if(gone.length)h+=`<h2>Partis de la penderie</h2><div class="card"><p><b>${second}</b> sur ${gone.length} ont eu une seconde vie.</p>${REASONS.map(([k,l])=>{const n=gone.filter(i=>i.removed.reason===k).length;return n?`<div class="row between tiny"><span>${l}</span><b>${n}</b></div>`:''}).join('')}</div>`;
+ h+=fold('À réparer',rep.length||'',b);
+ if(gone.length)h+=fold('Partis de la penderie',gone.length,`<div class="card"><p><b>${second}</b> sur ${gone.length} ont eu une seconde vie.</p>${REASONS.map(([k,l])=>{const n=gone.filter(i=>i.removed.reason===k).length;return n?`<div class="row between tiny"><span>${l}</span><b>${n}</b></div>`:''}).join('')}</div>`);
  return h;
 }
 
@@ -225,14 +229,18 @@ function vReglages(){
 VIEWS.reglages=vReglages;
 
 /* ---------- menu ---------- */
+function toolsSheet(){
+ const o=(a,t,d)=>`<button class="opt" data-a="${a}"><b>${t}</b>${d?`<br><span class="tiny">${d}</span>`:''}</button>`;
+ sheet(`<h2 style="margin-top:0">Outils de la penderie</h2>
+ ${o('underOpen','🧦 Mes dessous',UNDER.some(([k])=>uTot(k))?underStatus():'Compter chaussettes, culottes, boxers…')}
+ ${o('invOpen','⚡ Inventaire express','Compter vêtements et dessous en 2 minutes')}
+ ${o('tripOpen',S.trip?'🧳 Ma valise':'🧳 Préparer une valise','Selon la météo là-bas')}`);
+}
 function menuSheet(){
  const o=(a,t,d,attrs='')=>`<button class="opt" data-a="${a}" ${attrs}><b>${t}</b>${d?`<br><span class="tiny">${d}</span>`:''}</button>`;
  sheet(`<h2 style="margin-top:0">Menu</h2>
- ${o('chatOpen','💬 '+esc(botName()[0].toUpperCase()+botName().slice(1)),'Ton assistant shopper')}
+ ${o('go','📷 Ajouter des vêtements','Photo ou galerie','data-v="ajout"')}
  ${o('weekOpen','📅 Ma semaine','Tenues des 7 prochains jours')}
- ${o('invOpen','⚡ Inventaire express','Compter vêtements et dessous')}
- ${o('underOpen','🧦 Mes dessous','')}
- ${o('tripOpen','🧳 Valise','')}
  ${o('sessionOpen','🧵 Session réparation','')}
  ${o('favsOpen','♥ Tenues favorites','')}
  ${o('lookbookOpen','📸 Lookbook','Tes tenues en photo miroir')}

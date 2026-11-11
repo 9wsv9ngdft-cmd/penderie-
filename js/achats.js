@@ -120,7 +120,6 @@ function vEnvies(){
  if(due.length)h+=`<h2>À décider</h2>`+due.map(wishCard).join('');
  if(wait.length)h+=`<h2>En réflexion</h2>`+wait.map(wishCard).join('');
  if(!open.length)h+=`<p class="muted" style="margin-top:16px">Aucune envie en cours.</p>`;
- h+=`<h2>Défis</h2>`+chalCards();
  return h;
 }
 VIEWS.envies=vEnvies;

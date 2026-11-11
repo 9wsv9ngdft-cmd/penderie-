@@ -11,14 +11,53 @@ const sqColor=c=>colorFromPixels(c.getContext('2d').getImageData(0,0,c.width,c.h
 
 // Une prise = l'image entière (pour reconnaître le vêtement) + le carré du cadre (vignette « tissu », couleur).
 // Rien n'est analysé pendant que la caméra est ouverte : elle reste fluide, même après 15 photos.
-const shotOf=(full,sq)=>({photo:full.toDataURL('image/jpeg',.72),sq:sq.toDataURL('image/jpeg',.8),full,color:sqColor(sq)});
+const shotOf=(full,sq)=>({photo:full.toDataURL('image/jpeg',.72),sq:sq.toDataURL('image/jpeg',.8),full,color:sqColor(sq),sig:sigOf(full)});
+
+/* ---------- doublons : une petite empreinte visuelle par photo ----------
+   L'image est réduite à 9×8 pixels gris : on note si chaque pixel est plus clair que son voisin (64 bits), plus la couleur moyenne.
+   Deux photos du même vêtement, prises de la même façon, donnent des empreintes presque identiques. Calcul : une fraction de milliseconde. */
+function sigOf(src){
+ const m=document.createElement('canvas');m.width=72;m.height=64;const mx=m.getContext('2d');mx.imageSmoothingQuality='high';mx.drawImage(src,0,0,72,64);
+ const c=document.createElement('canvas');c.width=9;c.height=8;const x=c.getContext('2d',{willReadFrequently:true});x.imageSmoothingQuality='high';x.drawImage(m,0,0,9,8);
+ const d=x.getImageData(0,0,9,8).data,L=[];let r=0,g=0,b=0;
+ for(let i=0;i<72;i++){L.push(d[i*4]*.3+d[i*4+1]*.59+d[i*4+2]*.11);r+=d[i*4];g+=d[i*4+1];b+=d[i*4+2]}
+ let h='';for(let y=0;y<8;y++){let n=0;for(let k=0;k<8;k++)n=n*2+(L[y*9+k]>L[y*9+k+1]?1:0);h+=n.toString(16).padStart(2,'0')}
+ return{h,c:[Math.round(r/72),Math.round(g/72),Math.round(b/72)]};
+}
+const SIG_OK=s=>s&&typeof s.h==='string'&&/^[0-9a-f]{16}$/.test(s.h)&&Array.isArray(s.c)&&s.c.length===3;
+function sigDist(a,b){let n=0;for(let k=0;k<16;k++){let v=parseInt(a.h[k],16)^parseInt(b.h[k],16);while(v){n+=v&1;v>>=1}}return n}
+const colDist=(a,b)=>Math.hypot(a.c[0]-b.c[0],a.c[1]-b.c[1],a.c[2]-b.c[2]);
+// le vêtement (déjà dans la penderie) ou la photo (déjà prise dans la série) qui ressemble le plus, s'il ressemble assez
+function findDup(sig,shots=[]){
+ if(!SIG_OK(sig))return null;let best=null,bd=1e9;
+ const look=(s,o)=>{if(!SIG_OK(s))return;const d=sigDist(sig,s);if(d<=12&&colDist(sig,s)<=45&&d<bd){bd=d;best=o}};
+ active().forEach(i=>look(i.sig,{name:i.name,photo:ORIG.has(i.id)?null:photos.get(i.id),id:i.id}));
+ shots.forEach((s,k)=>look(s.sig,{name:`ta photo n° ${k+1} de cette série`,photo:s.photo}));
+ return best;
+}
+// vêtements déjà enregistrés sans empreinte : on la calcule une fois, tranquillement (photo d'origine si elle a été détourée)
+async function ensureSigs(){
+ for(const i of S.items){if(SIG_OK(i.sig)||!photos.get(i.id)||i.removed)continue;
+  try{const p=ORIG.has(i.id)?await DB.get('orig:'+i.id):photos.get(i.id);if(!p)continue;
+   const img=new Image();await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=p});i.sig=sigOf(img)}catch(e){}
+  await new Promise(r=>setTimeout(r,20))}
+ save();
+}
+// encadré de comparaison dans la caméra
+function dupBox(n,old){
+ const b=$('#scanDup');if(!b)return;const shot=SCAN.shots[n];
+ b.innerHTML=`<p><b>Déjà photographié ?</b> Ça ressemble à ${old.id?`« ${esc(old.name)} »`:esc(old.name)}.</p>
+  <div class="dup-pair"><figure><img src="${U(shot.photo)}" alt="Nouvelle photo"><figcaption>Nouvelle</figcaption></figure><figure>${old.photo&&U(old.photo)?`<img src="${U(old.photo)}" alt="${esc(old.name)}">`:'<div class="dup-none">photo détourée</div>'}<figcaption>${old.id?'Dans ta penderie':'Déjà prise'}</figcaption></figure></div>
+  <div class="row" style="flex-wrap:nowrap"><button class="btn sm" style="flex:1" data-a="dupDrop" data-k="${n}">Retirer la nouvelle</button><button class="btn sm line" style="flex:1" data-a="dupKeep" data-k="${n}">C’est un autre</button></div>`;
+ b.hidden=false;
+}
 
 /* ---------- interface ---------- */
 function scanUI(){
  const el=document.createElement('div');el.id='scan';el.setAttribute('role','dialog');el.setAttribute('aria-label','Appareil photo');
  el.innerHTML=`<video playsinline autoplay muted></video><div class="scan-frame"><span class="scan-label">Le vêtement entier</span><span class="scan-ok">✓ Prise !</span></div>
  <div class="scan-top"><button class="scan-x" data-a="scanClose" aria-label="Fermer">✕</button><span id="scanHint" aria-live="polite">Une ou plusieurs photos à la suite, puis OK</span></div>
- <div class="scan-strip" id="scanStrip"></div>
+ <div class="scan-dup" id="scanDup" role="alert" hidden></div><div class="scan-strip" id="scanStrip"></div>
  <div class="scan-bar"><label class="scan-side">Galerie<input type="file" accept="image/*" multiple id="scanGal" class="sr"></label>
  <button class="scan-shot" data-a="scanShot" aria-label="Prendre la photo"></button>
  <button class="scan-side scan-ok-btn" data-a="scanDone" id="scanDone" hidden>OK</button></div>`;
@@ -68,7 +107,7 @@ function scanCount(){
  if(d){d.hidden=!n;d.textContent=`OK (${n})`}
  if(h&&!$('#scan').classList.contains('nocam'))h.textContent=n?`${n} photo${n>1?'s':''} · continue, ou appuie sur OK`:'Une ou plusieurs photos à la suite, puis OK';
 }
-function addStrip(sq){const s=$('#scanStrip');if(!s)return;const i=document.createElement('div');i.style.backgroundImage=`url('${sq.toDataURL('image/jpeg',.6)}')`;s.prepend(i)}
+function addStrip(sq){const s=$('#scanStrip');if(!s)return;const i=document.createElement('div');i.dataset.k=SCAN?SCAN.shots.length-1:0;i.style.backgroundImage=`url('${sq.toDataURL('image/jpeg',.6)}')`;s.prepend(i)}
 
 // prise de vue : le cadre affiché à l'écran est converti en coordonnées de l'image vidéo
 function cropRect(src,x,y,w,h,max=640){
@@ -84,8 +123,9 @@ function shoot(){
  const raw=document.createElement('canvas');raw.width=VW;raw.height=VH;raw.getContext('2d').drawImage(v,0,0);
  const full=cropRect(raw,fx,fy,fw,fh);
  const m=Math.min(fw,fh)*.55,sq=cropSquare(raw,Math.max(0,fx+(fw-m)/2),Math.max(0,fy+(fh-m)/2),m);
- SCAN.shots.push(shotOf(full,sq));
+ const shot=shotOf(full,sq),dup=findDup(shot.sig,SCAN.shots);shot.dup=dup;SCAN.shots.push(shot);
  snap();addStrip(sq);scanCount();
+ const box=$('#scanDup');if(dup)dupBox(SCAN.shots.length-1,dup);else if(box)box.hidden=true;
 }
 async function shotFromFile(file){
  const {canvas}=await compress(file);const m=Math.min(canvas.width,canvas.height)*.6;
@@ -106,7 +146,7 @@ function takeShots(shots){
  if(!shots.length)return;
  if(shots.length===1&&!BATCH){ // une seule photo : directement la fiche complète
   if(!DR)DR=newDraft();keepDraftInputs();const s=shots[0],t=DR.touched||{};
-  DR.photo=s.photo;DR.sq=s.sq;DR.orig=null;DR.cutOn=undefined;if(!t.color)DR.color=s.color;
+  DR.photo=s.photo;DR.sq=s.sq;DR.sig=s.sig;DR.dup=s.dupOk?null:(s.dup||findDup(s.sig));DR.orig=null;DR.cutOn=undefined;if(!t.color)DR.color=s.color;
   if(!DR.name.trim()||DR.name===DR.autoName){DR.name=DR.autoName=`${cat(DR.cat).label} ${DR.color}`}
   DR.detected=S.ai&&!EDIT?'reconnaissance…':null;
   goAjout();
@@ -114,7 +154,7 @@ function takeShots(shots){
   return;
  }
  if(!BATCH)BATCH={items:[]};
- const add=shots.map(s=>({photo:s.photo,sq:s.sq,color:s.color,cat:'haut',guessed:false,warmth:2,season:'toutes',touched:{},pending:!!S.ai,name:`Vêtement ${s.color}`,autoName:`Vêtement ${s.color}`}));
+ const add=shots.map((s,k)=>({photo:s.photo,sq:s.sq,sig:s.sig,dup:s.dupOk?null:(s.dup||findDup(s.sig,shots.slice(0,k))),color:s.color,cat:'haut',guessed:false,warmth:2,season:'toutes',touched:{},pending:!!S.ai,name:`Vêtement ${s.color}`,autoName:`Vêtement ${s.color}`}));
  BATCH.items.push(...add);goAjout();
  if(S.ai)add.forEach((b,k)=>guess(shots[k].full).then(g=>{
   const was=b.autoName;b.pending=false;applyGuess(b,g);
@@ -162,6 +202,14 @@ Object.assign(A,{
  scanShot:shoot,
  scanDone(){const shots=SCAN?SCAN.shots:[];scanClose();SCAN=null;takeShots(shots)},
  manualAdd(){DR=newDraft();render();window.scrollTo({top:0})},
+ // doublons
+ dupDrop(el){const k=+el.dataset.k;if(!SCAN||!SCAN.shots[k])return;SCAN.shots.splice(k,1);const s=$('#scanStrip');
+  if(s){[...s.children].forEach(d=>{const n=+d.dataset.k;if(n===k)d.remove();else if(n>k)d.dataset.k=n-1})}
+  $('#scanDup').hidden=true;scanCount();toast('Photo retirée')},
+ dupKeep(el){const s=SCAN&&SCAN.shots[+el.dataset.k];if(s){s.dup=null;s.dupOk=true}$('#scanDup').hidden=true},
+ dupDraft(){DR=null;render();window.scrollTo({top:0});toast('Pas ajouté')},
+ dupDraftKeep(){if(DR)DR.dup=null;refreshAjout()},
+ dupBatchKeep(el){const b=BATCH&&BATCH.items[+el.dataset.k];if(b)b.dup=null;refreshAjout()},
  // détourage à la demande (fonctions dans ia.js)
  cutNow:cutNowSheet,cutGo,cutStop(){if(CUT_RUN&&CUT_RUN.manual){CUT_RUN.stop=true;cutNowSheet()}},
 });

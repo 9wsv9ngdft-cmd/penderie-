@@ -5,7 +5,7 @@ function render(){
  const app=$('#app');let html;
  try{html=VIEWS[VIEW]()}catch(e){console.error(e);html=`<h1>Oups</h1><div class="card"><p>Cet écran n’a pas pu s’afficher. Tes données ne sont pas touchées.</p><p class="tiny">${esc(e&&e.message||e)}</p><div class="row">${IN_PREVIEW?'':`<button class="btn sm soft" data-a="export">Sauvegarder (fichier)</button>`}<a class="btn sm ghost" href="#penderie">Voir la penderie</a></div></div>`}
  app.innerHTML=storageBanner()+html;
- document.querySelectorAll('#tabs a').forEach(a=>{const on=a.dataset.v===VIEW;a.classList.toggle('on',on);if(on)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
+ document.querySelectorAll('#tabs a').forEach(a=>{const on=a.dataset.v===VIEW||(VIEW==='ajout'&&a.dataset.v==='penderie');a.classList.toggle('on',on);if(on)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
  a11y(app);
  if(typeof botBadge==='function')botBadge();
  if(typeof checkBadges==='function')checkBadges();
@@ -44,6 +44,7 @@ window.addEventListener('hashchange',route);
  const ks=all.filter(k=>/^(photo|sq|look):/.test(k));
  const vals=await Promise.all(ks.map(k=>DB.get(k)));
  ks.forEach((k,n)=>{const p=vals[n];if(!p)return;const c=k.indexOf(':'),id=k.slice(c+1),t=k.slice(0,c);(t==='photo'?photos:t==='sq'?squares:lookPhotos).set(id,p)});
+ setTimeout(()=>ensureSigs().catch(()=>{}),4000); // empreintes pour repérer les doublons
  if(ks.length&&VIEW!=='ajout'&&$('#sheet').hidden)render();
  if(!IN_PREVIEW&&'serviceWorker' in navigator){try{
   // nouvelle version installée : on recharge pour ne jamais mélanger anciens et nouveaux fichiers,

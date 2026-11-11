@@ -169,11 +169,32 @@ setInterval(()=>{
  cutOne(next.id).then(ok=>{if(ok)IDLE_DONE++}).catch(e=>{console.warn(e);CUT_PAUSED=true}) // modèle indisponible : on réessaiera au prochain lancement
   .finally(()=>{CUT_RUN=null;if(!cutPending().length&&!$('#scan')&&VIEW!=='ajout')releaseModels()});
 },3000);
+// petits faits pour patienter pendant le détourage (chiffres ADEME / Impact CO2, relus le 11/11/2026 ; histoire des vêtements)
+const FACTS=[
+ 'Le mot « jean » viendrait de Gênes, port d’où partait cette toile solide. Et « denim » vient de « serge de Nîmes ».',
+ 'Un jean, c’est environ 25 kg de CO₂e sur toute sa vie, dont 92 % pour le fabriquer. Le porter longtemps, c’est le meilleur geste.',
+ 'Un t-shirt en coton : environ 6,4 kg de CO₂e, dont plus des trois quarts pour sa fabrication.',
+ 'Un manteau, c’est environ 100 kg de CO₂e, autant qu’environ 700 km en voiture. Le garder un hiver de plus, ça compte.',
+ 'Un pull en laine pèse environ 57 kg de CO₂e, surtout à cause de la matière première. Bonne nouvelle : la laine s’aère plus qu’elle ne se lave.',
+ 'Acheter d’occasion évite l’essentiel de l’empreinte d’un vêtement : sa fabrication est déjà faite.',
+ 'Le cardigan doit son nom au comte de Cardigan, officier britannique du XIXᵉ siècle.',
+ 'Le trench-coat tient son nom des tranchées de la Première Guerre mondiale, où les officiers le portaient.',
+ 'La marinière est devenue la tenue des matelots de la Marine française en 1858.',
+ 'Le bikini a pris le nom de l’atoll de Bikini, en 1946.',
+ 'Le défi « 30 ports » : avant d’acheter, se demander si on portera la pièce au moins 30 fois.',
+ 'Le sashiko est un art japonais de reprisage : des points blancs visibles qui rendent la réparation belle.',
+ 'Les tissus synthétiques relâchent des microfibres de plastique au lavage ; un sac de lavage dédié en retient une partie.',
+ 'Une machine bien remplie, c’est moins d’eau et d’énergie par vêtement : Dress Up te prévient quand elle est pleine.',
+ 'Porter un vêtement deux fois plus longtemps, c’est à peu près deux fois moins d’impact par port.',
+];
+let FACT_I=Math.floor(Math.random()*FACTS.length),FACT_T=null;
 // à la demande : tout d'un coup, avec une barre de progression
 function cutNowSheet(){
  const R=CUT_RUN&&CUT_RUN.manual?CUT_RUN:null,n=cutPending().length;
  if(R)return sheet(`<h2 style="margin-top:0">Détourage en cours</h2><p id="cutProg" aria-live="polite"><b>${R.done} / ${R.total}</b> photos</p><div class="bar"><i style="width:${R.total?R.done/R.total*100:0}%"></i></div>
-  <p class="tiny">Quelques secondes par photo. Tu peux poser ton téléphone ; garde l’app ouverte.</p><button class="btn ghost block" data-a="cutStop">${R.stop?'Arrêt après cette photo…':'Arrêter'}</button>`);
+  <p class="tiny">Quelques secondes par photo. Tu peux poser ton téléphone ; garde l’app ouverte.</p>
+  <div class="fact"><p class="label" style="margin:0 0 4px">Le saviez-vous ?</p><p id="cutFact" style="margin:0">${FACTS[FACT_I%FACTS.length]}</p></div>
+  <button class="btn ghost block" data-a="cutStop">${R.stop?'Arrêt après cette photo…':'Arrêter'}</button>`);
  if(R===null&&CUT_DONE_MSG){const m=CUT_DONE_MSG;CUT_DONE_MSG='';return sheet(`<h2 style="margin-top:0">C’est fait</h2><p>${m}</p><p class="tiny">Un détourage ne te plaît pas ? Ouvre le vêtement, puis « Remettre la photo d’origine ».</p><button class="btn block" data-a="close">Voir ma penderie</button>`)}
  sheet(`<h2 style="margin-top:0">Détourer mes photos</h2><p>${n?`<b>${n} photo${n>1?'s':''}</b> à détourer.`:'Toutes tes photos sont déjà détourées.'}</p>
   <p class="tiny">Le fond est retiré et le vêtement posé sur un fond uni. La photo d’origine reste disponible dans chaque fiche. Sinon, ça se fait tout seul quand l’app est ouverte et que tu n’y touches pas.</p>
@@ -185,9 +206,12 @@ async function cutGo(){
  while(CUT_RUN)await new Promise(r=>setTimeout(r,300)); // laisse finir une photo commencée au repos
  const list=cutPending().map(i=>i.id);if(!list.length){cutNowSheet();return}
  const R=CUT_RUN={manual:true,total:list.length,done:0,ok:0,stop:false};CUT_PAUSED=false;cutNowSheet();
+ // un nouveau fait toutes les 6 secondes
+ clearInterval(FACT_T);FACT_T=setInterval(()=>{const f=$('#cutFact');if(!f)return;FACT_I++;f.style.opacity=0;setTimeout(()=>{f.textContent=FACTS[FACT_I%FACTS.length];f.style.opacity=1},250)},6000);
  for(const id of list){if(R.stop)break;
   try{if(await cutOne(id))R.ok++}catch(e){console.warn(e);toast(IN_PREVIEW?'Détourage indisponible dans l’aperçu':'Détourage impossible pour l’instant (connexion ?)');break}
   R.done++;if($('#cutProg'))cutNowSheet()}
+ clearInterval(FACT_T);FACT_I++;
  CUT_RUN=null;CUT_DONE_MSG=R.ok?`${R.ok} photo${R.ok>1?'s':''} détourée${R.ok>1?'s':''}${R.done-R.ok?` · ${R.done-R.ok} trop floue${R.done-R.ok>1?'s':''} pour être détourée${R.done-R.ok>1?'s':''}`:''}.`:'Aucune photo n’a pu être détourée.';
  if(!$('#sheet').hidden)cutNowSheet();else{toast(CUT_DONE_MSG);CUT_DONE_MSG=''}
  if(VIEW!=='ajout')render();releaseModels();

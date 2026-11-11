@@ -76,6 +76,14 @@ function co2Card(i){
  ${i.ecoScore?`<p class="tiny">Coût environnemental officiel (étiquette) : <b>${i.ecoScore} points d’impact</b>.</p>`:''}
  </div>`;
 }
+function co2Hero(){
+ const act=active(),ward=act.reduce((s,i)=>s+myCo2(i),0),avoided=avoidedCo2();
+ const gone=S.items.filter(i=>i.removed&&['donne','vendu','recyclerie','transforme','collecte'].includes(i.removed.reason));
+ const kgTex=gone.reduce((s,i)=>s+(kgOf(i)||.3),0);
+ return `<div class="hero-co2"><p class="hc-k">🌱 CO₂e évités, au mieux</p><p class="hc-big">${fmtKg(avoided)}</p>
+  ${avoided>=1?`<p class="hc-eq">C’est jusqu’à ${eq(avoided,7).replace('≈ ','')}</p>`:`<p class="hc-eq">Seconde main, envies passées, dons : chaque geste compte ici.</p>`}
+  <div class="hc-row"><div><b>${fmtKg(ward)}</b><span>empreinte de ta penderie</span></div><div><b>${fmtKg(kgTex)}</b><span>de vêtements avec une seconde vie</span></div></div></div>`;
+}
 function co2Bilan(){
  const act=active(),gone=S.items.filter(i=>i.removed);
  const ward=act.reduce((s,i)=>s+myCo2(i),0);
@@ -84,12 +92,8 @@ function co2Bilan(){
  const kgTex=life.reduce((s,i)=>s+(kgOf(i)||.3),0);
  const resale=S.items.reduce((s,i)=>s+(i.resale||0),0);
  const wears=act.reduce((s,i)=>s+totalWears(i),0);
- return `<h2>Empreinte</h2><div class="stats">
-  <div class="stat"><b>${fmtKg(avoided)}</b><span>CO₂e évités, au mieux (seconde main, envies passées)</span></div>
-  <div class="stat"><b>${fmtKg(kgTex)}</b><span>de vêtements avec une seconde vie</span></div>
-  <div class="stat"><b>${fmtKg(ward)}</b><span>CO₂e : l’empreinte de ta penderie</span></div>
-  <div class="stat"><b>${eur(resale)}</b><span>récupérés en revendant</span></div></div>
-  <div class="card" style="margin-top:12px">${avoided>=1?`<p>Ce que tu as pu éviter, c’est jusqu’à ${eq(avoided,7).replace('≈ ','')} 🌱</p>`:''}
+ return `${resale?`<div class="stats" style="margin-top:12px"><div class="stat"><b>${eur(resale)}</b><span>récupérés en revendant</span></div></div>`:''}
+  <div style="margin-top:10px">
   ${wears>=act.length*3&&wears>=20?`<p class="tiny">En moyenne, chaque port de ta penderie pèse ${fmtKg(ward/wears)} CO₂e. Porter plus longtemps fait baisser ce chiffre.</p>`:''}
-  <p class="tiny">Ordres de grandeur ADEME (Impact CO2), moyennes par type de vêtement : ils ne mesurent pas précisément chacun de tes vêtements.</p></div>`;
+  <p class="tiny">Ordres de grandeur ADEME, en moyenne par type de vêtement.</p></div>`;
 }

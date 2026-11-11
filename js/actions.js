@@ -30,6 +30,7 @@ const A={
   if(S.trip)S.trip.list=S.trip.list.filter(x=>x.id!==id);S.plan=null;
   photos.delete(id);DB.del('photo:'+id);DB.del('orig:'+id);ORIG.delete(id);squares.delete(id);DB.del('sq:'+id);OUTS=null;save();closeSheet();render()},
  menuOpen(){menuSheet()},
+ toolsOpen(){toolsSheet()},
  washOpen(el){washSheet(el&&el.dataset.v)},
  fStored(){F.stored=!F.stored;render()},
  setKg(el){S.machineKg=+el.dataset.v;save();render()},
@@ -61,7 +62,7 @@ const A={
  batchSave(){
   keepBatchInputs();const ids=[];
   for(const b of BATCH.items){const id=uid();b.savedId=id;ids.push(id);
-   S.items.push({id,name:b.name.trim()||`${cat(b.cat).label} ${b.color}`,cat:b.cat,color:b.color,warmth:b.warmth||2,waterproof:!!b.waterproof,origin:null,price:null,mat:b.mat||null,style:b.style||null,season:b.season||seasonGuess(b.name),state:'propre',max:null,added:todayKey(),wears:0,sinceWash:0,lastWorn:null});
+   S.items.push({id,sig:SIG_OK(b.sig)?b.sig:undefined,name:b.name.trim()||`${cat(b.cat).label} ${b.color}`,cat:b.cat,color:b.color,warmth:b.warmth||2,waterproof:!!b.waterproof,origin:null,price:null,mat:b.mat||null,style:b.style||null,season:b.season||seasonGuess(b.name),state:'propre',max:null,added:todayKey(),wears:0,sinceWash:0,lastWorn:null});
    photos.set(id,b.photo);DB.set('photo:'+id,b.photo);saveSquare(id,b.sq)}
   const n=BATCH.items.length,wait=BATCH.items.some(b=>b.pending);BATCH=null;OUTS=null;save();ids.forEach(markCut);save();
   toast(n+' vêtement'+(n>1?'s':'')+' ajouté'+(n>1?'s':'')+(wait?' · reconnaissance en cours':'')+(S.cut?' · fonds retirés plus tard, quand tu ne te sers pas de l’app':''));location.hash='penderie'},
@@ -73,7 +74,7 @@ const A={
  maxInc(){const m=DR.max??cat(DR.cat).max;DR.max=Math.min(30,m+1);$('#maxv').textContent=fmtMax()},
  saveItem(el){
   DR.name=$('#nm').value.trim()||`${cat(DR.cat).label} ${DR.color}`;DR.ref=$('#ref').value.trim();DR.waterproof=$('#wp').checked;DR.price=parsePrice($('#price').value);DR.madeIn=$('#madeIn').value.trim();DR.ecoScore=parseInt($('#ecoScore').value)||null;const bt=$('#bought');if(bt)DR.boughtAt=bt.checked?(DR.boughtAt||todayKey()):null;if(DR.boughtAt&&!EDIT)DR.age=null;
-  const {photo,sq,touched,detected,orig,cutOn,fromWish,autoName,...data}=DR;if(orig)data.cut=cutOn!==false;
+  const {photo,sq,touched,detected,orig,cutOn,fromWish,autoName,dup,...data}=DR;if(orig)data.cut=cutOn!==false;
   if(EDIT){const k=S.items.findIndex(i=>i.id===EDIT);S.items[k]={...S.items[k],...data}}
   else{data.id=uid();data.added=todayKey();data.wears=0;data.sinceWash=data.state==='porte'?1:0;data.lastWorn=null;S.items.push(data)}
   const id=EDIT||data.id;
@@ -146,6 +147,7 @@ function cleanItem(raw){
  const put=(k,v)=>{if(v!==null&&v!==''&&v!==false&&v!==undefined)o[k]=v};
  put('mat',cs.key(i.mat,MATIERES));put('age',cs.key(i.age,AGES));put('boughtAt',cs.date(i.boughtAt));
  put('madeIn',cs.str(i.madeIn,40));put('ref',cs.str(i.ref,300));put('size',cs.str(i.size,20));put('etat',ETATS.includes(i.etat)?i.etat:null);
+ if(SIG_OK(i.sig))o.sig={h:i.sig.h,c:i.sig.c.map(v=>cs.int(v,0,255)||0)};
  put('ecoScore',cs.int(i.ecoScore,0,1e5));put('resale',cs.num(i.resale,0,1e5));put('askPrice',cs.num(i.askPrice,0,1e5));
  put('repairKind',cs.key(i.repairKind,KINDS));put('repaired',cs.int(i.repaired,0,1e3));
  for(const k of ['boost','swap','cut','express','cutTodo','cutKeep','cutFail'])put(k,i[k]===true);

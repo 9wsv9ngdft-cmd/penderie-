@@ -15,6 +15,8 @@ function underUse(u,ids,band){ // consommation d'une journée (compteurs réels 
  const b=band||(effWeather()||{}).band;if(ids&&ids.some(id=>{const i=item(id);return i&&(i.cat==='robe'||/jupe/i.test(i.name))})&&(b==='froid'||b==='frais'))dec('collants');
 }
 function onWear(ids){if(Object.keys(under()).length){S.undo.under=JSON.parse(JSON.stringify(under()));underUse(under(),ids)}}
+function underLow(){return !!(uTot('chaussettes')&&uClean('chaussettes')<=2||poolTot()&&poolClean()<=2)}
+function underStatus(){return [uTot('chaussettes')?`chaussettes ${uClean('chaussettes')}/${uTot('chaussettes')}`:'',poolTot()?`culottes/boxers/slips ${poolClean()}/${poolTot()}`:'',uTot('sg')?`soutiens-gorge ${uClean('sg')}/${uTot('sg')}`:''].filter(Boolean).join(' · ')}
 function underLine(){
  const ks=UNDER.filter(([k])=>uTot(k));if(!ks.length)return `<button class="btn sm ghost" data-a="underOpen">🧦 Compter mes dessous</button>`;
  const low=uTot('chaussettes')&&uClean('chaussettes')<=2||poolTot()&&poolClean()<=2;
