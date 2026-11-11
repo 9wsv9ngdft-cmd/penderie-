@@ -24,6 +24,7 @@ const A={
  removeAsk(el){removeSheet(el.dataset.id)},
  removeDo(el){const i=item(el.dataset.id);i.removed={date:todayKey(),reason:el.dataset.v};S.pins=S.pins.filter(x=>x!==i.id);OUTS=null;save();closeSheet();render();toast(['jete','perdu'].includes(el.dataset.v)?'Retiré de la penderie':'Merci pour sa seconde vie ♻︎')},
  deleteDo(el){const id=el.dataset.id;S.items=S.items.filter(i=>i.id!==id);S.log.forEach(l=>l.ids=l.ids.filter(x=>x!==id));photos.delete(id);DB.del('photo:'+id);OUTS=null;save();closeSheet();render()},
+ menuOpen(){menuSheet()},
  washOpen(el){washSheet(el&&el.dataset.v)},
  fStored(){F.stored=!F.stored;render()},
  setKg(el){S.machineKg=+el.dataset.v;save();render()},

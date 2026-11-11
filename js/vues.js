@@ -164,20 +164,41 @@ function vBilan(){
  <div class="card"><h3>Ailleurs que dans la poubelle</h3><p class="tiny">Retoucheurs labellisés « bonus réparation » (une partie de la réparation est prise en charge), points de collecte textile, recycleries :</p>
  <p><a href="https://www.refashion.fr" target="_blank" rel="noopener">refashion.fr</a> · <a href="https://longuevieauxobjets.gouv.fr" target="_blank" rel="noopener">longuevieauxobjets.gouv.fr</a></p></div>`;
  if(gone.length)h+=`<h2>Partis de la penderie</h2><div class="card"><p><b>${second}</b> sur ${gone.length} ont eu une seconde vie.</p>${REASONS.map(([k,l])=>{const n=gone.filter(i=>i.removed.reason===k).length;return n?`<div class="row between tiny"><span>${l}</span><b>${n}</b></div>`:''}).join('')}</div>`;
- h+=`<h2>Réglages</h2>`;
+ return h;
+}
+
+function vReglages(){
+ let h=`<p class="eyebrow">Dress Up</p><h1>Réglages</h1>`;
  if(IN_PREVIEW)h+=`<div class="notice">Tu es dans l’<b>aperçu</b> : les données restent dans ce navigateur, mais la météo auto et l’export de sauvegarde sont désactivés. Pour la vraie app, installe la version complète (voir mon message).</div>`;
- h+=`<div class="card">${botSettings(false)}<div class="spacer"></div><button class="btn sm" data-a="botSave">Enregistrer</button></div>
- <div class="card"><p class="label" style="margin-top:0">Saison en cours</p><div class="chips">${['ete','hiver'].map(k=>`<button class="chip ${curSeason()===k?'on':''}" data-a="seasonSwitch" data-v="${k}">${SEASONS[k]}</button>`).join('')}</div>
+ h+=`<h2>Mon assistant</h2><div class="card">${botSettings(false)}<div class="spacer"></div><button class="btn sm" data-a="botSave">Enregistrer</button></div>
+ <h2>Préférences</h2><div class="card"><p class="label" style="margin-top:0">Saison en cours</p><div class="chips">${['ete','hiver'].map(k=>`<button class="chip ${curSeason()===k?'on':''}" data-a="seasonSwitch" data-v="${k}">${SEASONS[k]}</button>`).join('')}</div>
   <p class="label">Ce qui te parle (pour les équivalences CO₂)</p><div class="chips">${Object.entries(INTERESTS).map(([k,l])=>`<button class="chip ${(S.interests||[]).includes(k)?'on':''}" data-a="interest" data-v="${k}">${l}</button>`).join('')}</div>
   <p class="label">Ta machine à laver</p><div class="chips">${[5,6,7,8,9,10].map(k=>`<button class="chip ${capKg()===k?'on':''}" data-a="setKg" data-v="${k}">${k} kg</button>`).join('')}</div></div>
- <div class="card">
+ <h2>Météo</h2><div class="card">
   ${IN_PREVIEW?'':`<p><b>Ville météo :</b> ${S.city?esc(S.city.name):'—'}</p><form class="row" data-f="city" style="flex-wrap:nowrap;margin-bottom:12px"><input type="search" name="city" placeholder="Changer de ville" autocomplete="off"><button class="btn sm">OK</button></form>`}
+</div><h2>Mes données</h2><div class="card">
   <p class="tiny">Stockage : ${DB.ok?'sur cet appareil (IndexedDB)':'temporaire — sera perdu à la fermeture'}. Aucune donnée n’est envoyée ailleurs${IN_PREVIEW?'':' (seule la position arrondie de ta ville part vers Open-Meteo pour la météo)'}.</p>
   <div class="row">${IN_PREVIEW?'':`<button class="btn sm soft" data-a="export">Sauvegarder (fichier)</button>`}<label class="btn sm ghost">Restaurer<input type="file" accept="application/json" id="imp" hidden></label></div>
-  <div class="spacer"></div><div class="row"><button class="btn sm ghost" data-a="onbOpen">Revoir l’accueil</button><button class="btn sm danger" data-a="wipeAsk">Tout effacer</button></div>
+  <div class="spacer"></div><button class="btn sm ghost" data-a="onbOpen">Revoir l’accueil</button></div>
+ <h2>Réinitialiser</h2><div class="card"><p class="tiny">Efface vêtements, photos, envies, défis et réglages de cet appareil. Pense à sauvegarder avant.</p><button class="btn danger block" data-a="wipeAsk">Tout effacer et recommencer</button>
  </div>
  ${IN_PREVIEW?'':`<div class="card"><h3>Raccourci du matin</h3><p class="tiny">App Raccourcis → Automatisation → Heure de la journée (ex. 7 h 30) → action « Ouvrir les URL » :</p><p><code>${esc(location.origin+location.pathname)}#matin</code></p><p class="tiny">Utilise toujours le même navigateur (ou toujours l’icône de l’écran d’accueil) : sur iPhone, les deux ont des stockages séparés.</p></div>`}`;
  return h;
+}
+VIEWS.reglages=vReglages;
+
+/* ---------- menu ---------- */
+function menuSheet(){
+ const o=(a,t,d,attrs='')=>`<button class="opt" data-a="${a}" ${attrs}><b>${t}</b>${d?`<br><span class="tiny">${d}</span>`:''}</button>`;
+ sheet(`<h2 style="margin-top:0">Menu</h2>
+ ${o('chatOpen','💬 '+esc(botName()[0].toUpperCase()+botName().slice(1)),'Ton assistant shopper')}
+ ${o('weekOpen','📅 Ma semaine','Tenues des 7 prochains jours')}
+ ${o('invOpen','⚡ Inventaire express','Compter vêtements et dessous')}
+ ${o('underOpen','🧦 Mes dessous','')}
+ ${o('tripOpen','🧳 Valise','')}
+ ${o('sessionOpen','🧵 Session réparation','')}
+ ${o('favsOpen','♥ Tenues favorites','')}
+ ${o('go','⚙️ Réglages','Assistant, ville, machine, saison, sauvegarde, réinitialiser','data-v="reglages"')}`);
 }
 
 /* ---------- feuilles (modales) ---------- */

@@ -136,3 +136,4 @@ code{background:#ece5d6;padding:1px 6px;border-radius:6px;font-size:13px;word-br
 .msg .chips .chip{font-size:13px;padding:6px 11px;text-decoration:none}
 .msg .fb{margin-top:6px;font-size:13px;opacity:.7}.msg .fb button{background:none;border:0;font-size:14px;cursor:pointer;padding:0 6px 0 0}
 .chatbar{position:sticky;bottom:0;background:var(--paper);padding-top:8px}
+.menu-btn{position:fixed;top:calc(env(safe-area-inset-top) + 12px);right:max(14px,calc(50% - 266px));width:44px;height:44px;border-radius:50%;background:var(--card);border:1.5px solid var(--line);font-size:20px;color:var(--ink);z-index:9;cursor:pointer;box-shadow:0 4px 12px rgba(30,38,32,.08)}
