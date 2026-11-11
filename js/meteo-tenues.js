@@ -32,8 +32,9 @@ let OUTS=null;
 function genOutfits(w){
  const avail=inUse().filter(i=>i.state==='propre'||i.state==='porte');
  const by=c=>avail.filter(i=>i.cat===c);
- const b=w.band,rain=!!w.rain,used=new Map();
- const pick=(c,want)=>{const list=by(c);if(!list.length)return null;
+ const b=w.band,rain=!!w.rain,used=new Map(),occ=todayOcc();
+ const pick=(c,want)=>{let list=by(c);if(!list.length)return null;
+  if(occ==='sport'){const t=list.filter(i=>occsOf(i).includes('sport'));if(t.length)list=t}
   const pin=list.find(i=>S.pins.includes(i.id));if(pin)return pin;
   let best=null,bs=-1e9;
   for(const i of list){
@@ -45,6 +46,7 @@ function genOutfits(w){
    if(d!==null&&d<2&&i.state!=='porte')s-=1;
    s-=Math.abs((i.warmth||2)-want)*1.3;
    if(rain&&i.waterproof&&(c==='veste'||c==='chaussures'))s+=3;
+   s+=occScore(i,occ);                          // boulot, sport, soirée…
    s-=(used.get(i.id)||0)*2.5;                  // varier entre les 3 idées
    if(s>bs){bs=s;best=i}}
   return best};
@@ -55,11 +57,14 @@ function genOutfits(w){
   if(useRobe)o.push(pick('robe',b==='chaud'?1:2));
   else{o.push(pick('haut',b==='chaud'?1:b==='froid'?2:1.5));o.push(pick('bas',b==='chaud'?1:b==='froid'?3:2))}
   if(b==='frais'||b==='froid'||(b==='doux'&&w.feels<18))o.push(pick('pull',b==='froid'?3:b==='doux'?1:2));
-  if(b==='frais'||b==='froid'||rain)o.push(pick('veste',b==='froid'?3:b==='frais'?2:1));
+  if(b==='frais'||b==='froid'||rain||(occ==='soiree'&&b!=='chaud'))o.push(pick('veste',b==='froid'?3:b==='frais'?2:1));
   o.push(pick('chaussures',2));
   const items=o.filter(Boolean);items.forEach(i=>used.set(i.id,(used.get(i.id)||0)+1));
   if(items.length)outs.push(items.map(i=>i.id));
  }
+ // de temps en temps, une tenue favorite revient parmi les idées
+ const fc=favCandidates(avail,w,occ);
+ if(fc.length&&Math.random()<.6){const f=fc[Math.floor(Math.random()*fc.length)],a=[...f.ids];a.fav=true;outs.unshift(a);outs.length=Math.min(outs.length,3)}
  const seen=new Set();
  return outs.filter(o=>{const key=[...o].sort().join();if(seen.has(key))return false;seen.add(key);return true});
 }
@@ -70,7 +75,7 @@ function wear(ids){
  S.undo={date:t,prev:ids.map(id=>JSON.parse(JSON.stringify(item(id)))),pins:[...S.pins]};
  ids.forEach(id=>{const i=item(id);i.wears=(i.wears||0)+1;i.sinceWash=(i.sinceWash||0)+1;i.lastWorn=t;i.boost=false;
   const m=maxOf(i);i.state=m===0?'propre':(i.sinceWash>=m?'sale':'porte')});
- S.log=S.log.filter(l=>l.date!==t);S.log.push({date:t,ids});S.pins=[];OUTS=null;save();
+ S.log=S.log.filter(l=>l.date!==t);S.log.push({date:t,ids,occ:todayOcc()});S.pins=[];OUTS=null;save();
 }
 function undoToday(){
  const t=todayKey();if(!S.undo||S.undo.date!==t)return;

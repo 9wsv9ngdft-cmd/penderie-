@@ -51,11 +51,11 @@ function vMatin(){
  if(!active().length)return h+`<div class="card empty"><div class="serif">Ta penderie est vide</div><p class="muted">Commence par photographier quelques vêtements : un haut, un bas, des chaussures suffisent pour une première tenue.</p><a class="btn" href="#ajout">Ajouter un vêtement</a></div>`;
  const w=effWeather();
  h+=weatherCard(w);
- h+=seasonNotice()+laundryNotice();
+ h+=seasonNotice()+laundryNotice()+wishNotice();
  const todayLog=S.log.find(l=>l.date===todayKey());
  if(todayLog){
   const its=todayLog.ids.map(item).filter(Boolean);
-  h+=`<h2>Aujourd’hui</h2><div class="card outfit"><div class="strip">${its.map(i=>thumb(i)).join('')}</div><ul>${its.map(i=>`<li><span>${esc(i.name)}</span><span>${i.wears} ports</span></li>`).join('')}</ul><p class="tiny">Tenue enregistrée. Bonne journée !</p><button class="btn sm ghost" data-a="undo">Changer de tenue</button></div>`;
+  h+=`<h2>Aujourd’hui</h2><div class="card outfit"><div class="strip">${its.map(i=>thumb(i)).join('')}</div><ul>${its.map(i=>`<li><span>${esc(i.name)}</span><span>${i.wears} ports</span></li>`).join('')}</ul><p class="tiny">Tenue enregistrée. Bonne journée !</p><div class="row"><button class="btn sm ${isFav(todayLog.ids)?'clay':'soft'}" data-a="favToggle">${isFav(todayLog.ids)?'♥ Favorite':'♡ Tenue favorite'}</button><button class="btn sm ghost" data-a="undo">Changer de tenue</button></div></div>`;
   return h;
  }
  h+=yesterdayCard();
@@ -63,12 +63,12 @@ function vMatin(){
  if(!OUTS)OUTS=genOutfits(w);
  if(!OUTS.length)return h+`<div class="card"><p>Rien de propre à proposer… C’est peut-être le jour de la lessive ?</p><a class="btn sm" href="#penderie">Voir la penderie</a></div>`;
  const tip={froid:'Superpose : trois couches fines tiennent plus chaud qu’une épaisse.',frais:'Prévois une couche que tu peux enlever à midi.',doux:'Une petite maille suffira.',chaud:'Matières légères et respirantes.'}[w.band];
- h+=`<h2>Idées du jour</h2><p class="tiny" style="margin-top:-4px">${tip} On privilégie ce qui est déjà porté et ce que tu as un peu oublié.</p>`;
+ h+=`<h2>Idées du jour</h2>${occChips()}<p class="tiny" style="margin-top:-4px">${tip} On privilégie ce qui est déjà porté et ce que tu as un peu oublié.</p>`;
  h+=OUTS.map((o,k)=>{const its=o.map(item).filter(Boolean);
   const miss=[];const cats=its.map(i=>i.cat);
   if(!cats.includes('robe')&&!cats.includes('bas'))miss.push('bas');
   if((w.band==='froid'||w.band==='frais')&&!cats.includes('pull'))miss.push('pull');
-  return `<div class="card outfit"><div class="num">Tenue ${k+1}</div><div class="strip">${its.map(i=>thumb(i)).join('')}</div><ul>${its.map(i=>`<li><span>${esc(i.name)}</span><span>${i.state==='porte'?'déjà porté':i.boost?'mis en avant':i.lastWorn?(daysSince(i.lastWorn)>45?'à faire revivre':''):(daysSince(i.added)>=30?'jamais porté':'')}</span></li>`).join('')}</ul>${miss.length?`<p class="tiny">Pas de ${miss.join(' ni de ')} propre dispo.</p>`:''}<button class="btn block" data-a="wearOutfit" data-k="${k}">Je porte ça</button></div>`}).join('');
+  return `<div class="card outfit"><div class="num">${o.fav?'♥ Une de tes favorites':'Tenue '+(k+1)}</div><div class="strip">${its.map(i=>thumb(i)).join('')}</div><ul>${its.map(i=>`<li><span>${esc(i.name)}</span><span>${i.state==='porte'?'déjà porté':i.boost?'mis en avant':i.lastWorn?(daysSince(i.lastWorn)>45?'à faire revivre':''):(daysSince(i.added)>=30?'jamais porté':'')}</span></li>`).join('')}</ul>${miss.length?`<p class="tiny">Pas de ${miss.join(' ni de ')} propre dispo.</p>`:''}<button class="btn block" data-a="wearOutfit" data-k="${k}">Je porte ça</button></div>`}).join('');
  h+=`<button class="btn soft block" data-a="reroll">Autres idées</button>`;
  return h;
 }
@@ -79,15 +79,16 @@ function vPenderie(){
  list.sort((a,b)=>(a.cat>b.cat?1:a.cat<b.cat?-1:0)||a.name.localeCompare(b.name));
  let h=`<p class="eyebrow">${all.length-nStored} pièce${all.length-nStored>1?'s':''} · mode ${SEASONS[curSeason()].toLowerCase()}</p><h1>Penderie</h1>`;
  h+=seasonNotice()+laundryCard();
+ if(favs().length)h+=`<button class="btn sm ghost" data-a="favsOpen" style="margin-bottom:12px">♥ Tenues favorites (${favs().length})</button>`;
  h+=`<div class="chips scroll">${[['all','Tout'],...CATS.map(c=>[c.id,c.label])].map(([v,l])=>`<button class="chip ${F.cat===v?'on':''}" data-a="fCat" data-v="${v}">${l}</button>`).join('')}</div><div class="spacer"></div>`;
  h+=`<div class="chips scroll">${[['all','Tous états'],...Object.entries(STATES)].map(([v,l])=>`<button class="chip ${F.state===v?'on':''}" data-a="fState" data-v="${v}">${l}${v!=='all'?` · ${act.filter(i=>i.state===v).length}`:''}</button>`).join('')}${nStored||F.stored?`<button class="chip ${F.stored?'on':''}" data-a="fStored">Rangés · ${nStored}</button>`:''}</div><div class="spacer"></div>`;
  if(!list.length)h+=`<div class="empty"><p class="muted">${act.length?'Rien ici avec ces filtres.':'Aucun vêtement pour l’instant.'}</p></div>`;
- else h+=`<div class="grid">${list.map(i=>`<button class="it" data-a="open" data-id="${i.id}">${thumb(i,'ph',true)}<div class="nm">${esc(i.name)}</div><div class="mt">${stored(i)?'rangé · ':''}${i.wears||0} port${(i.wears||0)>1?'s':''}${i.price>0&&i.wears?' · '+eur(cpp(i))+'/port':''}</div></button>`).join('')}</div>`;
+ else h+=`<div class="grid">${list.map(i=>`<button class="it" data-a="open" data-id="${i.id}">${thumb(i,'ph',true)}<div class="nm">${esc(i.name)}</div><div class="mt">${stored(i)?'rangé · ':''}${i.wears||0} port${(i.wears||0)>1?'s':''}${cpp(i)!==null&&totalWears(i)?' · '+eur(cpp(i))+'/port':''}</div></button>`).join('')}</div>`;
  h+=`<a class="fab" href="#ajout" aria-label="Ajouter">+</a>`;
  return h;
 }
 
-function newDraft(){return{name:'',cat:'haut',color:'noir',warmth:2,waterproof:false,origin:null,price:null,season:'toutes',wash:'',state:'propre',max:null,photo:null}}
+function newDraft(){return{name:'',cat:'haut',color:'noir',warmth:2,waterproof:false,origin:null,price:null,season:'toutes',wash:'',occ:[],state:'propre',max:null,photo:null}}
 function vBatch(){
  if(BATCH.busy)return `<p class="eyebrow">Analyse en cours</p><h1>${BATCH.done}/${BATCH.total}</h1><div class="bar"><i style="width:${BATCH.done/BATCH.total*100}%"></i></div><p class="tiny">Tout se passe sur ton téléphone.</p>`;
  return `<p class="eyebrow">Vérifie et corrige</p><h1>${BATCH.items.length} vêtement${BATCH.items.length>1?'s':''}</h1><p class="tiny" style="margin-top:-8px">J’ai deviné ce que j’ai pu. Touche un champ pour corriger.</p>
@@ -114,14 +115,17 @@ function vAjout(){
  <p class="label">Catégorie</p><div class="chips">${CATS.map(c=>`<button class="chip ${DR.cat===c.id?'on':''}" data-a="dr" data-k="cat" data-v="${c.id}">${c.label}</button>`).join('')}</div>
  <p class="label">Couleur dominante</p><div class="chips">${COLORS.map(([n,v])=>`<button class="chip ${DR.color===n?'on':''}" data-a="dr" data-k="color" data-v="${n}"><span class="dot" style="background:${v}"></span>${n}</button>`).join('')}</div>
  <p class="label">Chaleur</p><div class="chips">${Object.entries(WARMTH).map(([k,l])=>`<button class="chip ${+DR.warmth===+k?'on':''}" data-a="dr" data-k="warmth" data-v="${k}">${l}</button>`).join('')}</div>
+ <p class="label">Occasions <span style="text-transform:none;font-weight:400">(plusieurs possibles)</span></p><div class="chips">${Object.entries(OCCS).map(([k,l])=>`<button class="chip ${(DR.occ&&DR.occ.length?DR.occ:['quotidien']).includes(k)?'on':''}" data-a="drOcc" data-v="${k}">${l}</button>`).join('')}</div>
  <p class="label">Saison</p><div class="chips">${Object.entries(SEASONS).map(([k,l])=>`<button class="chip ${(DR.season||'toutes')===k?'on':''}" data-a="dr" data-k="season" data-v="${k}">${l}</button>`).join('')}</div>
  <p class="label">Lessive</p><div class="chips">${[['','Auto ('+WASH[WASH_OF_COLOR[DR.color]||'couleur'].toLowerCase()+')'],...Object.entries(WASH)].map(([k,l])=>`<button class="chip ${(DR.wash||'')===k?'on':''}" data-a="dr" data-k="wash" data-v="${k}">${l}</button>`).join('')}</div>
  <p class="label">Provenance</p><div class="chips">${Object.entries(ORIGINS).map(([k,l])=>`<button class="chip ${originOf(DR)===k?'on':''}" data-a="dr" data-k="origin" data-v="${k}">${l}</button>`).join('')}</div>
  <p class="label">Prix d’achat <span style="text-transform:none;font-weight:400">(facultatif)</span></p><div class="row" style="flex-wrap:nowrap"><input type="text" inputmode="decimal" id="price" value="${DR.price>0?String(DR.price).replace('.',','):''}" placeholder="ex. 35" autocomplete="off" style="max-width:140px"><span class="muted">€</span></div><p class="tiny" style="margin-top:6px">Pour calculer ce que te coûte chaque port.</p>
+ ${EDIT&&DR.boughtAt?'':`<p class="label">Acheté il y a… <span style="text-transform:none;font-weight:400">(facultatif)</span></p><div class="chips">${Object.entries(AGES).map(([k,[l]])=>`<button class="chip ${DR.age===k?'on':''}" data-a="dr" data-k="age" data-v="${k}">${l}</button>`).join('')}</div><p class="tiny" style="margin-top:6px">Pour estimer combien de fois tu l’as porté avant l’app.</p>`}
  <p class="label">Marque, référence ou lien <span style="text-transform:none;font-weight:400">(facultatif)</span></p><input type="text" id="ref" value="${esc(DR.ref||'')}" placeholder="ex. Uniqlo 455123, ou lien du produit" autocomplete="off"><p class="tiny" style="margin-top:6px">Utile le jour où tu le revends ou le donnes.</p>
  <p class="label">Ports avant lavage</p><div class="stepper"><button data-a="maxDec">−</button><b id="maxv">${m===0?'jamais sale':m}</b><button data-a="maxInc">+</button></div><p class="tiny" style="margin-top:6px">Laver moins souvent = moins d’eau, d’énergie et d’usure. Aérer un pull entre deux ports suffit souvent.</p>
  <div class="spacer"></div>
  <label class="toggle"><span>Imperméable</span><input type="checkbox" id="wp" ${DR.waterproof?'checked':''}></label>
+ ${EDIT?'':`<label class="toggle"><span>Je viens de l’acheter<br><span class="tiny">Compte pour les défis « sans achat »</span></span><input type="checkbox" id="bought" ${DR.boughtAt?'checked':''}></label>`}
   ${EDIT?'':`<p class="label">État actuel</p><div class="chips">${Object.entries(STATES).map(([k,l])=>`<button class="chip ${DR.state===k?'on':''}" data-a="dr" data-k="state" data-v="${k}">${l}</button>`).join('')}</div>`}
  <div class="spacer"></div><div class="spacer"></div>
  <button class="btn block" data-a="saveItem">Enregistrer</button><div class="spacer"></div>
@@ -182,7 +186,8 @@ function itemSheet(id){
  const i=item(id);if(!i)return;const m=maxOf(i),d=daysSince(i.lastWorn),w=i.wears||0;
  sheet(`${thumb(i,'ph big')}<h2 style="margin-top:4px">${esc(i.name)}</h2>
  ${i.ref?`<p class="tiny" style="margin:0 0 4px">${/^https?:\/\//i.test(i.ref)?`<a href="${esc(i.ref)}" target="_blank" rel="noopener">Voir la fiche produit</a>`:'Réf. '+esc(i.ref)}</p>`:''}
- <p class="tiny">${cat(i.cat).label} · ${esc(i.color)} · ${WARMTH[i.warmth]||''}${i.waterproof?' · imperméable':''}${originOf(i)?' · '+ORIGINS[originOf(i)].toLowerCase():''}${i.season&&i.season!=='toutes'?' · '+SEASONS[i.season].toLowerCase():''} · lessive ${WASH[washOf(i)].toLowerCase()}</p>
+ <p class="tiny">${cat(i.cat).label} · ${esc(i.color)} · ${WARMTH[i.warmth]||''}${i.waterproof?' · imperméable':''}${originOf(i)?' · '+ORIGINS[originOf(i)].toLowerCase():''}${i.season&&i.season!=='toutes'?' · '+SEASONS[i.season].toLowerCase():''}${i.occ&&i.occ.length?' · '+i.occ.map(o=>OCCS[o].toLowerCase()).join(', '):''} · lessive ${WASH[washOf(i)].toLowerCase()}</p>
+ ${paused(i)?`<p class="notice" style="margin:8px 0">En pause pendant le Project 333.</p>`:''}
  ${stored(i)?`<p class="notice" style="margin:8px 0">Rangé jusqu’à la saison ${i.season==='ete'?'d’été':'d’hiver'} : il n’est pas proposé dans les tenues.</p>`:''}
  <div class="stats3"><div><b>${w}</b><span>ports</span></div><div><b>${m?`${i.sinceWash||0}/${m}`:'—'}</b><span>depuis lavage</span></div><div><b>${d===null?'jamais':d===0?'auj.':d+' j'}</b><span>dernier port</span></div></div>
  <div class="bar"><i style="width:${Math.min(100,w/30*100)}%"></i></div><p class="tiny">${w>=30?'Objectif 30 ports atteint 🌱':`Encore ${30-w} ports pour l’objectif 30.`}</p>

@@ -2,7 +2,7 @@
 "use strict";
 
 /* ---------- format ---------- */
-const eur=n=>(Math.round(n*100)/100).toLocaleString('fr-FR',{style:'currency',currency:'EUR',minimumFractionDigits:n<10?2:0,maximumFractionDigits:2});
+const eur=n=>(Math.round(n*100)/100).toLocaleString('fr-FR',{style:'currency',currency:'EUR',minimumFractionDigits:(n<10||Math.round(n*100)%100)?2:0,maximumFractionDigits:2});
 
 /* ---------- lessive pleine ---------- */
 const WASH={clair:'Clair',fonce:'Foncé',couleur:'Couleurs'};
@@ -42,25 +42,37 @@ const hyp=()=>{const h=S.hyp||{};const o={};for(const k in HYP0)o[k]={...HYP0[k]
 // Tes vrais chiffres : moyenne des ports des vêtements sortis de la penderie (usés, donnés, vendus…), dès 3 vêtements.
 function realLife(o){
  const g=S.items.filter(i=>i.removed&&i.removed.reason!=='perdu'&&originOf(i)===o);
- return g.length>=3?{avg:Math.round(g.reduce((s,i)=>s+(i.wears||0),0)/g.length),n:g.length}:null;
+ return g.length>=3?{avg:Math.round(g.reduce((s,i)=>s+totalWears(i),0)/g.length),n:g.length}:null;
 }
 const lifeOf=o=>Math.max(1,(realLife(o)||{}).avg||hyp()[o].vie);
-const cpp=i=>i.price>0?i.price/Math.max(1,i.wears||0):null;
+// Ports d'avant l'app : déduits du rythme réel mesuré depuis l'ajout, appliqué à l'âge du vêtement.
+const AGES={an0:['Cette année',.5],an1:['1 à 2 ans',1.5],an3:['3 à 5 ans',4],an5:['Plus de 5 ans',7]};
+function pastWears(i){
+ if(!i.age||!AGES[i.age])return 0;
+ const d=daysSince(i.added),w=i.wears||0;
+ if(d<28||w<2)return null; // pas encore assez de recul : estimation en construction
+ return Math.round(w/d*365*AGES[i.age][1]);
+}
+const totalWears=i=>(i.wears||0)+(pastWears(i)||0);
+const cpp=i=>i.price>0&&pastWears(i)!==null?i.price/Math.max(1,totalWears(i)):null;
 function projection(i){
  const w=i.wears||0,age=daysSince(i.added);
- if(!(i.price>0)||w<2||age<14)return null;
- const future=w+w/age*730;return{wears:Math.round(future),cpp:i.price/future};
+ if(!(i.price>0)||w<2||age<14||pastWears(i)===null)return null;
+ const future=totalWears(i)+w/age*730;return{wears:Math.round(future),cpp:i.price/future};
 }
 function compare(i){
- const o=originOf(i);if(!(i.price>0)||!o||o==='cadeau')return null;
- const H=hyp(),neufPrice=i.price/H[o].ratio,N=Math.max(i.wears||0,lifeOf(o));
+ const o=originOf(i);if(!(i.price>0)||!o||o==='cadeau'||pastWears(i)===null)return null;
+ const H=hyp(),neufPrice=i.price/H[o].ratio,N=Math.max(totalWears(i),lifeOf(o));
  return{N,rows:['neuf','fast','occasion'].map(a=>{const p=neufPrice*H[a].ratio,buys=Math.ceil(N/lifeOf(a));return{a,price:p,buys,cpp:p*buys/N,mine:a===o}}).sort((x,y)=>x.cpp-y.cpp)};
 }
 function costCard(i){
  if(!(i.price>0))return `<div class="card"><h3>Coût par port</h3><p class="tiny">Ajoute son prix d’achat (dans Modifier) pour savoir combien te coûte chaque port, et comparer avec la seconde main ou la fast-fashion.</p></div>`;
- const c=cpp(i),p=projection(i),cmp=compare(i),real=['neuf','fast','occasion'].some(o=>realLife(o));
+ const pw=pastWears(i);
+ if(pw===null)return `<div class="card"><h3>Coût par port</h3><p><b>Estimation en construction…</b></p><p class="tiny">Acheté ${i.age==='an0'?'cette année':'il y a '+AGES[i.age][0].toLowerCase()} : l’app apprend ton rythme de port sur quelques semaines pour estimer combien de fois tu l’as porté avant. Prix : ${eur(i.price)}.</p></div>`;
+ const c=cpp(i),p=projection(i),cmp=compare(i),real=['neuf','fast','occasion'].some(o=>realLife(o)),tw=totalWears(i);
  return `<div class="card"><h3>Coût par port</h3>
- <p><b style="font-size:22px;font-family:ui-serif,Georgia,serif">${eur(c)}</b> <span class="tiny">par port — ${eur(i.price)} ÷ ${Math.max(1,i.wears||0)} port${(i.wears||0)>1?'s':''}${!i.wears?' (pas encore porté)':''}</span></p>
+ <p><b style="font-size:22px;font-family:ui-serif,Georgia,serif">${eur(c)}</b> <span class="tiny">par port — ${eur(i.price)} ÷ ${Math.max(1,tw)} port${tw>1?'s':''}${!tw?' (pas encore porté)':''}</span></p>
+ ${pw?`<p class="tiny">~${pw} ports estimés avant l’app + ${i.wears||0} comptés depuis.</p>`:''}
  ${p?`<p class="tiny">Au rythme actuel, dans 2 ans : ~${p.wears} ports, soit <b>${eur(p.cpp)}</b> le port.</p>`:''}
  ${cmp?`<p class="label" style="margin-top:14px">Et si tu l’avais acheté…</p>
  ${cmp.rows.map(r=>`<div class="row between" style="padding:5px 0;border-top:1px solid var(--line)"><span>${ORIGINS[r.a]}${r.mine?' <span class="pill">le tien</span>':''}<br><span class="tiny">~${eur(r.price)}${r.buys>1?` × ${r.buys} achats`:''}</span></span><b>${eur(r.cpp)}</b></div>`).join('')}
@@ -73,9 +85,9 @@ function costBilan(){
  let h=`<h2>Coût par port</h2>`;
  if(!priced.length)h+=`<p class="muted">Ajoute le prix d’achat de quelques vêtements pour voir ce qu’ils te coûtent vraiment à chaque port.</p>`;
  else{
-  const best=act.filter(i=>i.price>0&&(i.wears||0)>=5).sort((a,b)=>cpp(a)-cpp(b))[0];
-  const byO=Object.keys(ORIGINS).filter(o=>o!=='cadeau').map(o=>{const g=priced.filter(i=>originOf(i)===o&&(i.wears||0)>0);if(!g.length)return null;
-   return[o,g.reduce((s,i)=>s+i.price,0)/g.reduce((s,i)=>s+i.wears,0)]}).filter(Boolean);
+  const best=act.filter(i=>cpp(i)!==null&&totalWears(i)>=5).sort((a,b)=>cpp(a)-cpp(b))[0];
+  const byO=Object.keys(ORIGINS).filter(o=>o!=='cadeau').map(o=>{const g=priced.filter(i=>originOf(i)===o&&cpp(i)!==null&&totalWears(i)>0);if(!g.length)return null;
+   return[o,g.reduce((s,i)=>s+i.price,0)/g.reduce((s,i)=>s+totalWears(i),0)]}).filter(Boolean);
   h+=`<div class="card">${best?`<p>Ta pièce la plus rentable : <b>${esc(best.name)}</b>, ${eur(cpp(best))} le port.</p>`:''}
   ${byO.length?`<p class="label" style="margin-top:6px">Coût moyen d’un port, selon la provenance</p>${byO.map(([o,v])=>`<div class="row between tiny" style="padding:3px 0"><span>${ORIGINS[o]}</span><b>${eur(v)}</b></div>`).join('')}`:''}</div>`;
  }
@@ -98,7 +110,7 @@ const SEASONS={toutes:'Toutes saisons',ete:'Été',hiver:'Hiver'};
 const seasonByDate=(d=new Date())=>{const m=d.getMonth()+1;return m>=4&&m<=9?'ete':'hiver'};
 const curSeason=()=>S.season||seasonByDate();
 const stored=i=>!!i.season&&i.season!=='toutes'&&i.season!==curSeason();
-const inUse=()=>active().filter(i=>!stored(i));
+const inUse=()=>active().filter(i=>!stored(i)&&!paused(i));
 const seasonGuess=n=>/short|sandale|débardeur|en lin/i.test(n||'')?'ete':/doudoune|manteau|polaire|en laine|bottine/i.test(n||'')?'hiver':'toutes';
 function seasonNotice(){
  const next=seasonByDate();if(next===curSeason())return'';

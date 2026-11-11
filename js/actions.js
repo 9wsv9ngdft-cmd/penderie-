@@ -61,11 +61,12 @@ const A={
  maxDec(){const m=DR.max??cat(DR.cat).max;DR.max=Math.max(0,m-1);$('#maxv').textContent=fmtMax()},
  maxInc(){const m=DR.max??cat(DR.cat).max;DR.max=Math.min(30,m+1);$('#maxv').textContent=fmtMax()},
  saveItem(el){
-  DR.name=$('#nm').value.trim()||`${cat(DR.cat).label} ${DR.color}`;DR.ref=$('#ref').value.trim();DR.waterproof=$('#wp').checked;DR.price=parsePrice($('#price').value);
-  const {photo,touched,detected,orig,cutOn,...data}=DR;if(orig)data.cut=cutOn!==false;
+  DR.name=$('#nm').value.trim()||`${cat(DR.cat).label} ${DR.color}`;DR.ref=$('#ref').value.trim();DR.waterproof=$('#wp').checked;DR.price=parsePrice($('#price').value);const bt=$('#bought');if(bt)DR.boughtAt=bt.checked?(DR.boughtAt||todayKey()):null;if(DR.boughtAt&&!EDIT)DR.age=null;
+  const {photo,touched,detected,orig,cutOn,fromWish,...data}=DR;if(orig)data.cut=cutOn!==false;
   if(EDIT){const k=S.items.findIndex(i=>i.id===EDIT);S.items[k]={...S.items[k],...data}}
   else{data.id=uid();data.added=todayKey();data.wears=0;data.sinceWash=data.state==='porte'?1:0;data.lastWorn=null;S.items.push(data)}
   const id=EDIT||data.id;
+  if(fromWish&&!EDIT){const w=(S.wishes||[]).find(x=>x.id===fromWish);if(w)w.decided={date:todayKey(),choice:'achete',itemId:id}}
   if(photo){photos.set(id,photo);DB.set('photo:'+id,photo)}
   OUTS=null;save();
   const name=DR.name;EDIT=null;DR=null;
