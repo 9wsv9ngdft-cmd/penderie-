@@ -32,7 +32,7 @@ let OUTS=null;
 function genOutfits(w){
  const avail=inUse().filter(i=>i.state==='propre'||i.state==='porte');
  const by=c=>avail.filter(i=>i.cat===c);
- const b=w.band,rain=!!w.rain,used=new Map(),occ=todayOcc();
+ const b=w.band,rain=!!w.rain,used=new Map(),occ=todayOcc(),mood=todayMood();
  const pick=(c,want)=>{let list=by(c);if(!list.length)return null;
   if(occ==='sport'){const t=list.filter(i=>occsOf(i).includes('sport'));if(t.length)list=t}
   const pin=list.find(i=>S.pins.includes(i.id));if(pin)return pin;
@@ -47,26 +47,38 @@ function genOutfits(w){
    s-=Math.abs((i.warmth||2)-want)*1.3;
    if(rain&&i.waterproof&&(c==='veste'||c==='chaussures'))s+=3;
    s+=occScore(i,occ);                          // boulot, sport, soirée…
-   s-=(used.get(i.id)||0)*2.5;                  // varier entre les 3 idées
+   s+=moodScore(i,mood,occ);                    // décontracté, chic, cosy…
+   s-=(used.get(i.id)||0)*1.2;                  // varier les candidates
    if(s>bs){bs=s;best=i}}
-  return best};
- const outs=[],robes=by('robe');
- for(let k=0;k<3;k++){
+  return best?{i:best,s:bs}:null};
+ // on fabrique une douzaine de tenues candidates, puis on garde les meilleures (harmonie comprise)
+ const cands=[],robes=by('robe');
+ for(let k=0;k<12;k++){
   const o=[];
-  const useRobe=robes.length&&(b==='chaud'||b==='doux')&&(k===1||!by('bas').length);
+  const useRobe=robes.length&&(b==='chaud'||b==='doux'||occ==='soiree')&&(k%3===1||!by('bas').length);
   if(useRobe)o.push(pick('robe',b==='chaud'?1:2));
   else{o.push(pick('haut',b==='chaud'?1:b==='froid'?2:1.5));o.push(pick('bas',b==='chaud'?1:b==='froid'?3:2))}
-  if(b==='frais'||b==='froid'||(b==='doux'&&w.feels<18))o.push(pick('pull',b==='froid'?3:b==='doux'?1:2));
+  if(b==='frais'||b==='froid'||(b==='doux'&&(w.feels||18)<18)||(mood==='cosy'&&b!=='chaud'))o.push(pick('pull',b==='froid'?3:b==='doux'?1:2));
   if(b==='frais'||b==='froid'||rain||(occ==='soiree'&&b!=='chaud'))o.push(pick('veste',b==='froid'?3:b==='frais'?2:1));
   o.push(pick('chaussures',2));
-  const items=o.filter(Boolean);items.forEach(i=>used.set(i.id,(used.get(i.id)||0)+1));
-  if(items.length)outs.push(items.map(i=>i.id));
+  const got=o.filter(Boolean);if(!got.length)continue;
+  got.forEach(x=>used.set(x.i.id,(used.get(x.i.id)||0)+1));
+  const items=got.map(x=>x.i),h=harmony(items,mood);
+  cands.push({ids:items.map(i=>i.id),score:got.reduce((a,x)=>a+x.s,0)/got.length*3+h.s*1.5});
  }
+ cands.sort((x,y)=>y.score-x.score);
+ const seen=new Set(),outs=[];
+ for(const c of cands){const key=[...c.ids].sort().join();if(seen.has(key))continue;
+  // éviter trois tenues presque identiques : au moins 2 pièces différentes
+  if(outs.some(o=>c.ids.filter(id=>o.includes(id)).length>c.ids.length-2))continue;
+  seen.add(key);outs.push(c.ids);if(outs.length===3)break}
+ // petite penderie : on complète sans la contrainte de diversité
+ for(const c of cands){if(outs.length>=3)break;const key=[...c.ids].sort().join();if(!seen.has(key)){seen.add(key);outs.push(c.ids)}}
+ if(outs[0])outs[0].perfect=true;
  // de temps en temps, une tenue favorite revient parmi les idées
  const fc=favCandidates(avail,w,occ);
- if(fc.length&&Math.random()<.6){const f=fc[Math.floor(Math.random()*fc.length)],a=[...f.ids];a.fav=true;outs.unshift(a);outs.length=Math.min(outs.length,3)}
- const seen=new Set();
- return outs.filter(o=>{const key=[...o].sort().join();if(seen.has(key))return false;seen.add(key);return true});
+ if(fc.length&&Math.random()<.5){const f=fc[Math.floor(Math.random()*fc.length)],a=[...f.ids];a.fav=true;outs.splice(1,0,a);outs.length=Math.min(outs.length,3)}
+ return outs;
 }
 
 /* ---------- porter / laver ---------- */

@@ -50,20 +50,20 @@ function aiLoad(){
   const progress_callback=p=>{if(p.status==='progress'&&p.total){files[p.file]=[p.loaded,p.total];const L=Object.values(files).reduce((a,b)=>a+b[0],0),Tt=Object.values(files).reduce((a,b)=>a+b[1],0);
    const now=Date.now();if(now-last>400){last=now;aiMsg(`Téléchargement du modèle : ${Math.round(L/1048576)} / ${Math.round(Tt/1048576)} Mo`)}}};
   // Les « étiquettes » texte ne se calculent qu'une fois, puis sont gardées sur l'appareil.
-  let txt=await DB.get('clip-text-v1');
+  let txt=await DB.get('clip-text-v2');
   if(!txt){
    aiMsg('Préparation du modèle…');
    const tok=await T.AutoTokenizer.from_pretrained(CLIP_ID,{progress_callback});
    const tm=await T.CLIPTextModelWithProjection.from_pretrained(CLIP_ID,{dtype:'q8',progress_callback});
    const enc=async list=>{const {text_embeds}=await tm(tok(list,{padding:true,truncation:true}));const d=text_embeds.dims[1];return list.map((_,i)=>Array.from(norm(text_embeds.data.slice(i*d,(i+1)*d))))};
-   txt={types:await enc(TYPES.map(t=>`a photo of a ${t[0]}, a piece of clothing`)),mats:await enc(MATS.map(m=>`a close-up photo of clothing made of ${m[0]}`)),pats:await enc(PATS.map(p=>`a photo of a ${p[0]} piece of clothing`))};
-   txt.types=txt.types.map(a=>Float32Array.from(a));DB.set('clip-text-v1',{types:txt.types.map(a=>Array.from(a)),mats:txt.mats,pats:txt.pats});
+   txt={types:await enc(TYPES.map(t=>`a photo of a ${t[0]}, a piece of clothing`)),mats:await enc(MATS.map(m=>`a close-up photo of clothing made of ${m[0]}`)),pats:await enc(PATS.map(p=>`a photo of a ${p[0]} piece of clothing`)),styles:await enc(['casual everyday','elegant formal','sporty athletic','cozy soft comfortable'].map(s=>`a photo of a ${s} piece of clothing`))};
+   txt.types=txt.types.map(a=>Float32Array.from(a));DB.set('clip-text-v2',{types:txt.types.map(a=>Array.from(a)),mats:txt.mats,pats:txt.pats,styles:txt.styles});
    try{await tm.dispose()}catch(e){}
   }
   const conv=a=>a.map(v=>v instanceof Float32Array?v:Float32Array.from(v));
   const proc=await T.AutoProcessor.from_pretrained(CLIP_ID,{progress_callback});
   const vm=await T.CLIPVisionModelWithProjection.from_pretrained(CLIP_ID,{dtype:'q8',progress_callback});
-  AI={T,proc,vm,txt:{types:conv(txt.types),mats:conv(txt.mats),pats:conv(txt.pats)}};aiMsg('Modèle prêt — tout se passe sur ton téléphone.');return AI})()
+  AI={T,proc,vm,txt:{types:conv(txt.types),mats:conv(txt.mats),pats:conv(txt.pats),styles:conv(txt.styles||[])}};aiMsg('Modèle prêt — tout se passe sur ton téléphone.');return AI})()
   .catch(e=>{AI_LOADING=null;aiMsg('');throw e});
  return AI_LOADING}
 function softmax(sims){const m=Math.max(...sims);const ex=sims.map(s=>Math.exp(100*(s-m)));const t=ex.reduce((a,b)=>a+b,0);return ex.map(e=>e/t)}
@@ -72,7 +72,7 @@ async function aiGuess(canvas){
  const ai=await aiLoad();
  const img=await ai.T.RawImage.fromURL(canvas.toDataURL('image/jpeg',.9));
  const {image_embeds}=await ai.vm(await ai.proc(img));const v=norm(image_embeds.data);
- const pt=softmax(ai.txt.types.map(t=>dot(v,t))),pm=softmax(ai.txt.mats.map(t=>dot(v,t))),pp=softmax(ai.txt.pats.map(t=>dot(v,t)));
+ const ps=ai.txt.styles.length?softmax(ai.txt.styles.map(t=>dot(v,t))):[],pt=softmax(ai.txt.types.map(t=>dot(v,t))),pm=softmax(ai.txt.mats.map(t=>dot(v,t))),pp=softmax(ai.txt.pats.map(t=>dot(v,t)));
  // on regroupe les probabilités par catégorie pour décider du type
  const byCat={};TYPES.forEach((t,i)=>byCat[t[1]]=(byCat[t[1]]||0)+pt[i]);
  const c=Object.entries(byCat).sort((a,b)=>b[1]-a[1])[0];if(c[1]<.35)return null;
@@ -80,7 +80,8 @@ async function aiGuess(canvas){
  const t=TYPES[ti],mi=best(pm),pi=best(pp);
  const mat=pm[mi]>.5?MATS[mi]:null,pat=pi>0&&pp[pi]>.5?PATS[pi]:null;
  let noun=t[2];if(mat&&!noun.toLowerCase().includes(mat[1].replace(/^en /,'')))noun+=' '+mat[1];if(pat)noun+=' '+pat[1];
- return{mat:mat?{wool:'laine',cotton:'coton',linen:'lin',denim:'coton',leather:'cuir',fleece:'polyester',silk:'soie','synthetic polyester':'polyester'}[mat[0]]:null,cat:t[1],noun,warmth:Math.max(1,Math.min(3,t[3]+(mat?mat[2]:0))),waterproof:!!t[4],motif:!!pat,conf:c[1]};
+ const si=ps.length?best(ps):-1;
+ return{style:si>=0&&ps[si]>.45?[['casual','chic','sport','cosy'][si]]:null,mat:mat?{wool:'laine',cotton:'coton',linen:'lin',denim:'coton',leather:'cuir',fleece:'polyester',silk:'soie','synthetic polyester':'polyester'}[mat[0]]:null,cat:t[1],noun,warmth:Math.max(1,Math.min(3,t[3]+(mat?mat[2]:0))),waterproof:!!t[4],motif:!!pat,conf:c[1]};
 }
 /* Détourage : modèle RMBG-1.4 (BRIA) sur l'appareil, ~45 Mo téléchargés une fois. */
 const RMBG_ID='briaai/RMBG-1.4',BG_COLOR='#EFE9DD';

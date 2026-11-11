@@ -51,11 +51,11 @@ function vMatin(){
  if(!active().length)return h+`<div class="card empty"><div class="serif">Ta penderie est vide</div><p class="muted">Commence par photographier quelques vêtements : un haut, un bas, des chaussures suffisent pour une première tenue.</p><a class="btn" href="#ajout">Ajouter un vêtement</a></div>`;
  const w=effWeather();
  h+=weatherCard(w);
- h+=seasonNotice()+laundryNotice()+wishNotice()+circularNotice()+photoOfDay();
+ h+=seasonNotice()+laundryNotice()+eveNotice()+wishNotice()+circularNotice()+photoOfDay();
  const todayLog=S.log.find(l=>l.date===todayKey());
  if(todayLog){
   const its=todayLog.ids.map(item).filter(Boolean);
-  h+=`<h2>Aujourd’hui</h2><div class="card outfit"><div class="strip">${its.map(i=>thumb(i)).join('')}</div><ul>${its.map(i=>`<li><span>${esc(i.name)}</span><span>${i.wears} ports</span></li>`).join('')}</ul><p class="tiny">Tenue enregistrée. Bonne journée !</p><div class="row"><button class="btn sm ${isFav(todayLog.ids)?'clay':'soft'}" data-a="favToggle">${isFav(todayLog.ids)?'♥ Favorite':'♡ Tenue favorite'}</button><button class="btn sm ghost" data-a="undo">Changer de tenue</button></div></div>`;
+  h+=`<h2>Aujourd’hui</h2><div class="card outfit"><div class="strip">${its.map(i=>thumb(i)).join('')}</div><ul>${its.map(i=>`<li><span>${esc(i.name)}</span><span>${i.wears} ports</span></li>`).join('')}</ul>${lookToggle(todayLog.ids)}<p class="tiny">Tenue enregistrée. Bonne journée !</p><div class="row"><label class="btn sm soft">📸 Photo miroir<input type="file" accept="image/*" capture="environment" id="mirrorPic" hidden></label><button class="btn sm ${isFav(todayLog.ids)?'clay':'soft'}" data-a="favToggle">${isFav(todayLog.ids)?'♥ Favorite':'♡ Tenue favorite'}</button><button class="btn sm ghost" data-a="undo">Changer de tenue</button></div></div>`;
   return h;
  }
  h+=yesterdayCard();
@@ -63,12 +63,12 @@ function vMatin(){
  if(!OUTS){OUTS=genOutfits(w);const pt=plannedToday();if(pt)OUTS=[pt,...OUTS.filter(o=>favKey(o)!==favKey(pt))].slice(0,3)}
  if(!OUTS.length)return h+`<div class="card"><p>Rien de propre à proposer… C’est peut-être le jour de la lessive ?</p><a class="btn sm" href="#penderie">Voir la penderie</a></div>`;
  const tip={froid:'Superpose : trois couches fines tiennent plus chaud qu’une épaisse.',frais:'Prévois une couche que tu peux enlever à midi.',doux:'Une petite maille suffira.',chaud:'Matières légères et respirantes.'}[w.band];
- h+=`<div class="row between" style="margin-top:30px"><h2 style="margin:0">Idées du jour</h2><button class="btn sm ghost" data-a="weekOpen">📅 Ma semaine</button></div><div class="spacer"></div>${occChips()}<p class="tiny" style="margin-top:-4px">${tip} On privilégie ce qui est déjà porté et ce que tu as un peu oublié.</p>`;
+ h+=`<div class="row between" style="margin-top:30px"><h2 style="margin:0">Idées du jour</h2><button class="btn sm ghost" data-a="weekOpen">📅 Ma semaine</button></div><div class="spacer"></div>${occChips()}${moodChips()}<p class="tiny" style="margin-top:-4px">${tip} On privilégie ce qui est déjà porté et ce que tu as un peu oublié.</p>`;
  h+=OUTS.map((o,k)=>{const its=o.map(item).filter(Boolean);
   const miss=[];const cats=its.map(i=>i.cat);
   if(!cats.includes('robe')&&!cats.includes('bas'))miss.push('bas');
   if((w.band==='froid'||w.band==='frais')&&!cats.includes('pull'))miss.push('pull');
-  return `<div class="card outfit"><div class="num">${o.plan?'📅 Prévue dans ta semaine':o.fav?'♥ Une de tes favorites':'Tenue '+(k+1)}</div><div class="strip">${its.map(i=>thumb(i)).join('')}</div><ul>${its.map(i=>`<li><span>${esc(i.name)}</span><span>${i.state==='porte'?'déjà porté':i.boost?'mis en avant':i.lastWorn?(daysSince(i.lastWorn)>45?'à faire revivre':''):(daysSince(i.added)>=30?'jamais porté':'')}</span></li>`).join('')}</ul>${miss.length?`<p class="tiny">Pas de ${miss.join(' ni de ')} propre dispo.</p>`:''}<button class="btn block" data-a="wearOutfit" data-k="${k}">Je porte ça</button></div>`}).join('');
+  return `<div class="card outfit"><div class="num">${o.plan?'📅 Prévue dans ta semaine':o.fav?'♥ Une de tes favorites':o.perfect?'⭐ La tenue parfaite':'Tenue '+(k+1)}</div><div class="strip">${its.map(i=>thumb(i)).join('')}</div>${o.perfect?`<p class="tiny" style="margin:-4px 0 10px">${esc(perfectWhy(o,w))}</p>`:''}${lookToggle(o)}<ul>${its.map(i=>`<li><span>${esc(i.name)}</span><span>${i.state==='porte'?'déjà porté':i.boost?'mis en avant':i.lastWorn?(daysSince(i.lastWorn)>45?'à faire revivre':''):(daysSince(i.added)>=30?'jamais porté':'')}</span></li>`).join('')}</ul>${miss.length?`<p class="tiny">Pas de ${miss.join(' ni de ')} propre dispo.</p>`:''}<button class="btn block" data-a="wearOutfit" data-k="${k}">Je porte ça</button></div>`}).join('');
  h+=`<button class="btn soft block" data-a="reroll">Autres idées</button>`;
  return h;
 }
@@ -117,6 +117,7 @@ function vAjout(){
  <p class="label">Couleur dominante</p><div class="chips">${COLORS.map(([n,v])=>`<button class="chip ${DR.color===n?'on':''}" data-a="dr" data-k="color" data-v="${n}"><span class="dot" style="background:${v}"></span>${n}</button>`).join('')}</div>
  <p class="label">Chaleur</p><div class="chips">${Object.entries(WARMTH).map(([k,l])=>`<button class="chip ${+DR.warmth===+k?'on':''}" data-a="dr" data-k="warmth" data-v="${k}">${l}</button>`).join('')}</div>
  <p class="label">Occasions <span style="text-transform:none;font-weight:400">(plusieurs possibles)</span></p><div class="chips">${Object.entries(OCCS).map(([k,l])=>`<button class="chip ${(DR.occ&&DR.occ.length?DR.occ:['quotidien']).includes(k)?'on':''}" data-a="drOcc" data-v="${k}">${l}</button>`).join('')}</div>
+ <p class="label">Style</p><div class="chips">${Object.entries(STYLES).map(([k,l])=>`<button class="chip ${styleOf(DR).includes(k)?'on':''}" data-a="drStyle" data-v="${k}">${l}</button>`).join('')}</div>
  <p class="label">Saison</p><div class="chips">${Object.entries(SEASONS).map(([k,l])=>`<button class="chip ${(DR.season||'toutes')===k?'on':''}" data-a="dr" data-k="season" data-v="${k}">${l}</button>`).join('')}</div>
  <p class="label">Lessive</p><div class="chips">${[['','Auto ('+WASH[WASH_OF_COLOR[DR.color]||'couleur'].toLowerCase()+')'],...Object.entries(WASH)].map(([k,l])=>`<button class="chip ${(DR.wash||'')===k?'on':''}" data-a="dr" data-k="wash" data-v="${k}">${l}</button>`).join('')}</div>
  <p class="label">Provenance</p><div class="chips">${Object.entries(ORIGINS).map(([k,l])=>`<button class="chip ${originOf(DR)===k?'on':''}" data-a="dr" data-k="origin" data-v="${k}">${l}</button>`).join('')}</div>
@@ -179,6 +180,7 @@ function vReglages(){
 </div><h2>Mes données</h2><div class="card">
   <p class="tiny">Stockage : ${DB.ok?'sur cet appareil (IndexedDB)':'temporaire — sera perdu à la fermeture'}. Aucune donnée n’est envoyée ailleurs${IN_PREVIEW?'':' (seule la position arrondie de ta ville part vers Open-Meteo pour la météo)'}.</p>
   <div class="row">${IN_PREVIEW?'':`<button class="btn sm soft" data-a="export">Sauvegarder (fichier)</button>`}<label class="btn sm ghost">Restaurer<input type="file" accept="application/json" id="imp" hidden></label></div>
+  <label class="toggle" style="margin-top:8px"><span>Inclure mes photos miroir dans la sauvegarde</span><input type="checkbox" id="expLooks" ${S.exportLooks?'checked':''}></label>
   <div class="spacer"></div><button class="btn sm ghost" data-a="onbOpen">Revoir l’accueil</button></div>
  <h2>Réinitialiser</h2><div class="card"><p class="tiny">Efface vêtements, photos, envies, défis et réglages de cet appareil. Pense à sauvegarder avant.</p><button class="btn danger block" data-a="wipeAsk">Tout effacer et recommencer</button>
  </div>
@@ -198,6 +200,7 @@ function menuSheet(){
  ${o('tripOpen','🧳 Valise','')}
  ${o('sessionOpen','🧵 Session réparation','')}
  ${o('favsOpen','♥ Tenues favorites','')}
+ ${o('lookbookOpen','📸 Lookbook','Tes tenues en photo miroir')}
  ${o('go','⚙️ Réglages','Assistant, ville, machine, saison, sauvegarde, réinitialiser','data-v="reglages"')}`);
 }
 
@@ -216,7 +219,7 @@ function itemSheet(id){
  const i=item(id);if(!i)return;const m=maxOf(i),d=daysSince(i.lastWorn),w=i.wears||0;
  sheet(`${thumb(i,'ph big')}<h2 style="margin-top:4px">${esc(i.name)}</h2>
  ${i.ref?`<p class="tiny" style="margin:0 0 4px">${/^https?:\/\//i.test(i.ref)?`<a href="${esc(i.ref)}" target="_blank" rel="noopener">Voir la fiche produit</a>`:'Réf. '+esc(i.ref)}</p>`:''}
- <p class="tiny">${cat(i.cat).label} · ${esc(i.color)} · ${WARMTH[i.warmth]||''}${i.waterproof?' · imperméable':''}${originOf(i)?' · '+ORIGINS[originOf(i)].toLowerCase():''}${i.season&&i.season!=='toutes'?' · '+SEASONS[i.season].toLowerCase():''}${i.occ&&i.occ.length?' · '+i.occ.map(o=>OCCS[o].toLowerCase()).join(', '):''} · lessive ${WASH[washOf(i)].toLowerCase()}</p>
+ <p class="tiny">${cat(i.cat).label} · ${esc(i.color)} · ${WARMTH[i.warmth]||''}${i.waterproof?' · imperméable':''}${originOf(i)?' · '+ORIGINS[originOf(i)].toLowerCase():''}${i.season&&i.season!=='toutes'?' · '+SEASONS[i.season].toLowerCase():''}${i.occ&&i.occ.length?' · '+i.occ.map(o=>OCCS[o].toLowerCase()).join(', '):''} · ${styleOf(i).map(s=>STYLES[s].toLowerCase()).join(', ')} · lessive ${WASH[washOf(i)].toLowerCase()}</p>
  ${colorPick(i)}
  ${paused(i)?`<p class="notice" style="margin:8px 0">En pause pendant le Project 333.</p>`:''}
  ${stored(i)?`<p class="notice" style="margin:8px 0">Rangé jusqu’à la saison ${i.season==='ete'?'d’été':'d’hiver'} : il n’est pas proposé dans les tenues.</p>`:''}

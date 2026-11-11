@@ -18,7 +18,7 @@ async function processShot(full,sq){
  return r;
 }
 function resultToBatch(r){
- return{photo:r.photo,sq:r.sq,color:r.color,cat:r.cat||'haut',guessed:!!r.cat,warmth:r.warmth||2,waterproof:!!r.waterproof,mat:r.mat||null,season:r.noun?seasonGuess(r.noun):'toutes',
+ return{photo:r.photo,sq:r.sq,color:r.color,cat:r.cat||'haut',guessed:!!r.cat,warmth:r.warmth||2,waterproof:!!r.waterproof,mat:r.mat||null,style:r.style||null,season:r.noun?seasonGuess(r.noun):'toutes',
   name:r.motif?r.noun:`${r.noun||(r.cat?cat(r.cat).label:'Vêtement')} ${r.color==='motif'?'à motif':r.color}`};
 }
 
@@ -97,6 +97,7 @@ function applyDraftResult(r){
  if(!t.color)DR.color=r.color;
  if(r.cat&&!t.cat&&!EDIT){DR.cat=r.cat;DR.max=null;if(!t.warmth)DR.warmth=r.warmth;if(r.waterproof)DR.waterproof=true;if(!t.season)DR.season=seasonGuess(r.noun)}
  if(r.mat&&!t.mat)DR.mat=r.mat;
+ if(r.style&&!(DR.style&&DR.style.length))DR.style=r.style;
  if(!DR.name.trim()&&!EDIT)DR.name=r.motif?r.noun:`${r.noun||cat(DR.cat).label} ${DR.color==='motif'?'à motif':DR.color}`;
  DR.detected=[r.noun||(r.cat?cat(r.cat).label:null),DR.color].filter(Boolean).join(' · ');
  if(r.aiErr||r.cutErr)toast(IN_PREVIEW?'IA indisponible dans l’aperçu':'Une partie de l’analyse a échoué (connexion ?)');

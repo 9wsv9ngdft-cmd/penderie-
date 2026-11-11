@@ -157,3 +157,4 @@ code{background:#ece5d6;padding:1px 6px;border-radius:6px;font-size:13px;word-br
 @keyframes snapFrame{0%{transform:translate(-50%,-50%) scale(1)}30%{transform:translate(-50%,-50%) scale(.94)}100%{transform:translate(-50%,-50%) scale(1)}}
 @keyframes snapVeil{0%{opacity:.85}100%{opacity:0}}
 @keyframes snapOk{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}25%{opacity:1;transform:translate(-50%,-50%) scale(1.05)}70%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(1)}}
+.look{width:100%;aspect-ratio:3/4;max-height:56vh;border-radius:16px;background-size:cover;background-position:center;margin:0 0 12px;background-color:#e9e2d4}

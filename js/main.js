@@ -21,7 +21,7 @@ window.addEventListener('hashchange',route);
  const st=await DB.get('state');if(st)S=Object.assign(S,st);
  // anciennes fiches : « acheté d’occasion » devient la provenance « seconde main »
  S.items.forEach(i=>{if(!i.origin&&i.secondHand)i.origin='occasion'});
- for(const k of await DB.keys()){const ks=String(k);if(ks.startsWith('photo:')){const p=await DB.get(k);if(p)photos.set(ks.slice(6),p)}else if(ks.startsWith('sq:')){const p=await DB.get(k);if(p)squares.set(ks.slice(3),p)}}
+ for(const k of await DB.keys()){const ks=String(k);if(ks.startsWith('photo:')){const p=await DB.get(k);if(p)photos.set(ks.slice(6),p)}else if(ks.startsWith('sq:')){const p=await DB.get(k);if(p)squares.set(ks.slice(3),p)}else if(ks.startsWith('look:')){const p=await DB.get(k);if(p)lookPhotos.set(ks.slice(5),p)}}
  route();
  if(!S.onboarded&&!S.items.length){ONB=0;onbSheet()}
  if(S.ai)aiLoad().catch(()=>{});

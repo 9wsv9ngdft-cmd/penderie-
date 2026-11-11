@@ -4,7 +4,7 @@
 /* ---------- occasions ---------- */
 const OCCS={quotidien:'Quotidien',boulot:'Boulot',sport:'Sport',soiree:'Soirée'};
 const occsOf=i=>(i.occ&&i.occ.length)?i.occ:['quotidien'];
-const todayOcc=()=>S.occDay&&S.occDay.date===todayKey()?S.occDay.v:'quotidien';
+const todayOcc=()=>S.occDay&&S.occDay.date===todayKey()?S.occDay.v:((typeof dayOverride==='function'&&dayOverride()||{}).occ||(typeof agenda==='function'&&agenda()[new Date().getDay()])||'quotidien');
 // bonus si le vêtement va avec l'occasion du jour, malus s'il est réservé à une autre
 const occScore=(i,occ)=>occsOf(i).includes(occ)?(occ==='quotidien'?0:3.5):-3.5;
 const occChips=()=>`<div class="chips scroll" style="margin-bottom:12px">${Object.entries(OCCS).map(([k,l])=>`<button class="chip ${todayOcc()===k?'on':''}" data-a="setOcc" data-v="${k}">${l}</button>`).join('')}</div>`;
