@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Redress</title>
+<title>Dress Up</title>
 <link rel="icon" type="image/png" href="favicon.png">
 <meta name="theme-color" content="#F3EEE4">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Redress">
+<meta name="apple-mobile-web-app-title" content="Dress Up">
 <style>
 :root{--paper:#F3EEE4;--card:#FBF8F2;--ink:#1E2620;--muted:#6D6B60;--line:#E1D8C6;--moss:#2E5A3A;--moss2:#DCE5D4;--clay:#B9582F;--clay2:#F4DFD2;--sun:#C98F1E;--sun2:#F6E9C9;--plum:#6B4A7A;--plum2:#ECE1EF;--r:18px;color-scheme:light}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -339,7 +339,7 @@ function yesterdayCard(){
 
 function vMatin(){
  const d=new Date();
- let h=`<p class="eyebrow"><b style="color:var(--moss)">Redress</b> · ${d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</p><h1>${greet()}</h1>`;
+ let h=`<p class="eyebrow"><b style="color:var(--moss)">Dress Up</b> · ${d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</p><h1>${greet()}</h1>`;
  if(!active().length)return h+`<div class="card empty"><div class="serif">Ta penderie est vide</div><p class="muted">Commence par photographier quelques vêtements : un haut, un bas, des chaussures suffisent pour une première tenue.</p><a class="btn" href="#ajout">Ajouter un vêtement</a></div>`;
  const w=effWeather();
  h+=weatherCard(w);
@@ -608,7 +608,7 @@ const A={
  },
  export(){
   const data=JSON.stringify({app:'penderie',v:1,date:todayKey(),state:S,photos:Object.fromEntries(photos)});
-  try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'application/json'}));a.download=`redress-${todayKey()}.json`;document.body.appendChild(a);a.click();a.remove();toast('Sauvegarde téléchargée')}catch(e){toast('Export impossible ici')}
+  try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'application/json'}));a.download=`dressup-${todayKey()}.json`;document.body.appendChild(a);a.click();a.remove();toast('Sauvegarde téléchargée')}catch(e){toast('Export impossible ici')}
  },
  wipeAsk(){sheet(`<h2 style="margin-top:0">Tout effacer ?</h2><p>Vêtements, photos et historique seront supprimés de cet appareil. Pense à sauvegarder avant.</p><button class="btn clay block" data-a="wipeDo">Oui, tout effacer</button><div class="spacer"></div><button class="btn ghost block" data-a="close">Annuler</button>`)},
  async wipeDo(){for(const k of await DB.keys())DB.del(k);photos.clear();S={v:1,items:[],log:[],pins:[],city:null,wx:null,manual:null,undo:null};save();closeSheet();location.hash='matin';render()},
