@@ -45,7 +45,7 @@ function similar(w){
 function wishThumb(w,cls='ph',st=''){const p=photos.get(w.id);return p?`<div class="${cls}" style="background-image:url('${U(p)}');${st}"></div>`:`<div class="${cls} sw" style="background:${colorVal(w.color)};${st}"><span>${esc(cat(w.cat).label)}</span></div>`}
 function wishCard(w){
  const s=similar(w),due=wishDue(w),lbl=cat(w.cat).label.toLowerCase();
- return `<div class="card"><div class="row" style="flex-wrap:nowrap;align-items:flex-start;gap:12px">${wishThumb(w,'ph mini','width:74px')}
+ return `<div class="card"><div class="row" style="flex-wrap:nowrap;align-items:flex-start;gap:12px">${wishThumb(w,'ph mini',photos.get(w.id)?'width:104px':'width:74px')}
  <div style="flex:1;min-width:0"><b>${esc(w.name)}</b>${w.price>0?` · ${eur(w.price)}`:''}<br>
  <span class="tiny">${due?'<b style="color:var(--clay)">À décider</b>':`En réflexion : encore ${wishLeft(w)} jour${wishLeft(w)>1?'s':''}`}</span>
  ${w.ref&&/^https?:\/\//i.test(w.ref)?`<br><a class="tiny" href="${esc(w.ref)}" target="_blank" rel="noopener">Voir le produit</a>`:''}</div></div>
@@ -55,10 +55,16 @@ function wishCard(w){
  :`<div class="row" style="margin-top:10px"><button class="btn sm ghost" data-a="wishDrop" data-id="${w.id}">J’y renonce déjà</button></div>`}</div>`;
 }
 let WD=null;
+function wishPick(){
+ sheet(`<h2 style="margin-top:0">Une envie ?</h2><p class="tiny">Prends-la en photo : en vitrine, sur quelqu’un, ou une capture d’écran d’un site. Dans ${WISH_DAYS} jours, tu la revois et tu décides.</p>
+ <label class="btn block" style="margin-top:8px">📷 Prendre en photo<input type="file" accept="image/*" capture="environment" id="wpic" hidden></label><div class="spacer"></div>
+ <label class="btn ghost block">🖼️ Une photo ou une capture d’écran<input type="file" accept="image/*" id="wpic2" hidden></label><div class="spacer"></div>
+ <button class="btn sm ghost block" data-a="wishNoPic">✍️ Sans photo, je la décris</button>`);
+}
 function wishSheet(){
  if(!WD)WD={name:'',cat:'haut',color:'noir',price:null,ref:'',photo:null};
  sheet(`<h2 style="margin-top:0">Noter une envie</h2><p class="tiny">Tu la retrouveras dans ${WISH_DAYS} jours. Souvent, l’envie passe toute seule.</p>
- <label class="photo-drop" style="padding:10px">${WD.photo?`<div class="ph" style="background-image:url('${U(WD.photo)}');max-width:140px"></div>`:''}<input type="file" accept="image/*" id="wpic"><span class="btn sm soft" style="margin-top:${WD.photo?8:0}px">${WD.photo?'Changer l’image':'Ajouter une image (facultatif)'}</span></label>
+ <label class="photo-drop" style="padding:10px">${WD.photo?`<div class="ph" style="background-image:url('${U(WD.photo)}');max-width:220px;margin:0 auto"></div>`:''}${WD.guessing?'<p class="tiny" style="margin:8px 0 0;color:var(--moss);font-weight:600">🔍 Je regarde ce que c’est…</p>':''}<input type="file" accept="image/*" id="wpic"><span class="btn sm soft" style="margin-top:${WD.photo?8:0}px">${WD.photo?'Changer l’image':'Ajouter une image (facultatif)'}</span></label>
  <p class="label">Quoi ?</p><input type="text" id="wnm" value="${esc(WD.name)}" placeholder="ex. Pull en laine vert" autocomplete="off">
  <p class="label">Catégorie</p><div class="chips">${CATS.map(c=>`<button class="chip ${WD.cat===c.id?'on':''}" data-a="wd" data-k="cat" data-v="${c.id}">${c.label}</button>`).join('')}</div>
  <p class="label">Couleur</p><div class="chips">${COLORS.map(([n,v])=>`<button class="chip ${WD.color===n?'on':''}" data-a="wd" data-k="color" data-v="${n}"><span class="dot" style="background:${v}"></span>${n}</button>`).join('')}</div>
@@ -136,7 +142,8 @@ Object.assign(A,{
  wearFav(el){const f=favs().find(x=>x.id===el.dataset.id);if(!f)return;wear(f.ids);f.last=todayKey();save();closeSheet();location.hash='matin';render();toast('Tenue enregistrée 🌿')},
  drOcc(el){const v=el.dataset.v;const o=new Set(DR.occ&&DR.occ.length?DR.occ:['quotidien']);o.has(v)?o.delete(v):o.add(v);DR.occ=[...o];
   const cur=DR.occ.length?DR.occ:['quotidien'];el.parentElement.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',cur.includes(c.dataset.v)))},
- wishNew(){WD=null;wishSheet()},
+ wishNew(){WD=null;wishPick()},
+ wishNoPic(){WD=null;wishSheet()},
  wd(el){keepWish();WD[el.dataset.k]=el.dataset.v;WD.touched={...(WD.touched||{}),[el.dataset.k]:1};wishSheet()},
  wishSave(){keepWish();if(!WD.name.trim())WD.name=`${cat(WD.cat).label} ${WD.color}`;
   const id=uid(),{photo,touched,...w}=WD;wishes().push({...w,id,added:todayKey(),decided:null});
@@ -158,6 +165,11 @@ Object.assign(A,{
   P333=null;OUTS=null;save();closeSheet();render();toast(c?'Sélection enregistrée':'Défi lancé : 3 mois avec 33 pièces')},
 });
 document.addEventListener('change',async e=>{
- if(e.target.id!=='wpic'||!e.target.files[0])return;keepWish();
- try{const {canvas}=await compress(e.target.files[0]);WD.photo=canvas.toDataURL('image/jpeg',.72);if(!(WD.touched||{}).color)WD.color=detectColor(canvas);wishSheet()}catch(err){toast('Image illisible')}
+ if(!['wpic','wpic2'].includes(e.target.id)||!e.target.files[0])return;if(!WD)WD={name:'',cat:'haut',color:'noir',price:null,ref:'',photo:null};keepWish();
+ let canvas;try{({canvas}=await compress(e.target.files[0]));WD.photo=canvas.toDataURL('image/jpeg',.72);if(!(WD.touched||{}).color)WD.color=detectColor(canvas)}catch(err){toast('Image illisible');return}
+ // reconnaissance (si activée) : catégorie et nom proposés, l'utilisateur garde la main
+ if(S.ai&&!IN_PREVIEW){const w=WD;w.guessing=true;wishSheet();
+  try{const g=await aiGuess(canvas);if(g&&WD===w){if(!(w.touched||{}).cat&&CATS.some(c=>c.id===g.cat))w.cat=g.cat;keepWish();if(!w.name.trim())w.name=g.noun[0].toUpperCase()+g.noun.slice(1)}}catch(err){}
+  w.guessing=false;if(WD===w&&!$('#sheet').hidden&&$('#wnm'))wishSheet();return}
+ wishSheet()
 });

@@ -160,7 +160,7 @@ function cleanState(raw){
  const s=cs.obj(raw),seen=new Set();
  const items=cs.arr(s.items).map(cleanItem).filter(i=>i&&!seen.has(i.id)&&seen.add(i.id));
  const kid=v=>cs.arr(v).map(cs.id).filter(x=>x&&seen.has(x));
- const o={v:1,items,pins:kid(s.pins),city:null,wx:null,manual:null,undo:null,onboarded:!!s.onboarded||items.length>0,
+ const o={v:1,items,pins:kid(s.pins),city:null,wx:null,manual:null,undo:null,onboarded:!!s.onboarded||items.length>0,seenVer:cs.int(s.seenVer)||0,
   log:cs.arr(s.log).map(l=>{l=cs.obj(l);const d=cs.date(l.date);return d?{date:d,ids:kid(l.ids),occ:cs.key(l.occ,OCCS)||'quotidien'}:null}).filter(Boolean)};
  const put=(k,v)=>{if(v!==null&&v!==undefined)o[k]=v};
  const c=cs.obj(s.city),lat=cs.num(c.lat,-90,90),lon=cs.num(c.lon,-180,180);if(cs.str(c.name,60).trim()&&lat!==null&&lon!==null)o.city={name:cs.str(c.name,60).trim(),lat,lon};
@@ -171,7 +171,7 @@ function cleanState(raw){
  if(s.under){o.under={};for(const [k] of UNDER){const u=cs.obj(cs.obj(s.under)[k]),t=cs.int(u.total,0,200);if(t)o.under[k]={total:t,clean:Math.min(t,cs.int(u.clean,0,200)??t),uses:cs.int(u.uses,0,1e5)||0}}}
  if(s.agenda){o.agenda={};for(let d=0;d<7;d++){const v=cs.key(cs.obj(s.agenda)[d],OCCS);if(v)o.agenda[d]=v}}
  if(s.dayPlan){o.dayPlan={};for(const [k,v] of Object.entries(cs.obj(s.dayPlan))){if(!cs.date(k))continue;const e=cs.obj(v),d={};const oc=cs.key(e.occ,OCCS),mo=cs.key(e.mood,MOODS);if(oc)d.occ=oc;if(mo)d.mood=mo;o.dayPlan[k]=d}}
- if(s.bot){const b=cs.obj(s.bot),f=cs.obj(b.fb);o.bot={name:cs.str(b.name,30).trim(),tone:cs.key(b.tone,TONES)||'complice',budget:cs.num(b.budget,0,1e5)||null,fb:{up:cs.int(f.up)||0,down:cs.int(f.down)||0,streak:cs.int(f.streak)||0}}}
+ if(s.bot){const b=cs.obj(s.bot),f=cs.obj(b.fb);o.bot={name:cs.str(b.name,30).trim(),tone:cs.key(b.tone,TONES)||'complice',budget:cs.num(b.budget,0,1e5)||null,fb:{up:cs.int(f.up)||0,down:cs.int(f.down)||0,streak:cs.int(f.streak)||0}};const pr=cs.obj(b.prefs);o.bot.prefs={styles:cs.arr(pr.styles).filter(k=>k in STYLES||k==='crea'),goal:cs.key(pr.goal,GOALS)||null,colors:cs.arr(pr.colors).filter(n=>COLORS.some(c=>c[0]===n))}}
  const list=(k,fn)=>{const out=cs.arr(s[k]).map(x=>fn(cs.obj(x))).filter(Boolean);if(out.length)o[k]=out};
  list('favs',f=>{const id=cs.id(f.id),ids=kid(f.ids);return id&&ids.length?{id,ids,occ:cs.key(f.occ,OCCS)||'quotidien',added:cs.date(f.added)||todayKey(),last:cs.date(f.last)}:null});
  list('looks',l=>{const id=cs.id(l.id),d=cs.date(l.date);return id&&d?{id,date:d,ids:kid(l.ids)}:null});

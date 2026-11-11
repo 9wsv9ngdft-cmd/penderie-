@@ -40,6 +40,7 @@ window.addEventListener('hashchange',route);
  // on affiche d'abord, les photos arrivent ensuite (lues toutes ensemble)
  route();
  if(!S.onboarded&&!S.items.length){ONB=0;onbSheet()}
+ else if(S.seenVer!==APP_VERSION&&!IN_PREVIEW&&$('#sheet').hidden)newsSheet();
  const all=(await DB.keys()).map(String);all.forEach(k=>{if(k.startsWith('orig:'))ORIG.add(k.slice(5))});
  const ks=all.filter(k=>/^(photo|sq|look):/.test(k));
  const vals=await Promise.all(ks.map(k=>DB.get(k)));

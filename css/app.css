@@ -269,3 +269,10 @@ details.fold>summary{display:flex;align-items:center;gap:10px;padding:14px 0;cur
 details.fold>summary h2{margin:0;flex:1}
 details.fold>summary::after{font-size:22px}
 details.fold[open]{padding-bottom:10px}
+
+.priv{background:var(--moss2);border-radius:18px;padding:14px 16px;margin:14px 0 4px;font-size:15px;line-height:1.45}
+.tour{display:flex;flex-direction:column;gap:12px;margin:8px 0 14px}
+.tour-row{display:flex;gap:14px;align-items:center}
+.tour-ico{flex:none;width:46px;height:46px;border-radius:14px;background:var(--card);display:grid;place-items:center;box-shadow:var(--shadow)}
+.tour-ico svg{width:26px;height:26px;fill:none;stroke:var(--ink);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+ul.news{padding-left:0;list-style:none;margin:6px 0 12px}ul.news li{padding:8px 0;border-top:1px solid var(--line)}ul.news li:first-child{border-top:0}

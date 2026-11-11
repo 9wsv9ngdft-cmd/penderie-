@@ -63,6 +63,10 @@ function replyAchat(d,text){
   L.push(T({complice:[`Encore ? Tu as déjà ${plural(n,w)}… 😏`,`Hmm, ${plural(n,w)} dans ta penderie, et tu en veux encore ?`],doux:`Tu as déjà ${plural(n,w)}, peut-être que l’un d’eux ferait l’affaire ?`,sobre:`Tu possèdes déjà ${plural(n,w)}.`,pep:`Attends attends : tu as déjà ${plural(n,w)} ! 🙌`}));
   if(sleep.length)L.push(`Et ${sleep.length>1?`${sleep.length} d’entre eux dorment`:'l’un d’eux dort'} depuis plus de 2 mois${sleep.length===1?` (${esc(sleep[0].name)})`:''}.`);
  }else L.push(T({complice:'Tiens, tu n’as rien de ce genre. Ça peut être un vrai manque, pour une fois 😄',doux:'Tu n’as rien de ce type : ça peut combler un vrai manque.',sobre:'Aucun équivalent dans ta penderie.',pep:'Rien de pareil chez toi : ça pourrait être un vrai plus !'}));
+ const pf=prefs();
+ if(d.col&&pf.colors.length)L.push(pf.colors.includes(d.col)?`Du ${d.col} : c’est dans tes couleurs 💚`:`Le ${d.col} n’est pas dans tes couleurs préférées (${pf.colors.slice(0,3).join(', ')}). Tu le porterais vraiment ?`);
+ if(pf.goal==='moins'||pf.goal==='place')L.push(T({complice:'Et je te rappelle ton objectif : '+(pf.goal==='moins'?'acheter moins':'faire de la place')+' 😉',doux:'Pense à ton objectif : '+(pf.goal==='moins'?'acheter moins':'faire de la place')+'.',sobre:'Objectif : '+(pf.goal==='moins'?'acheter moins':'faire de la place')+'.',pep:'Ton objectif, c’est '+(pf.goal==='moins'?'acheter moins':'faire de la place')+' ! 💪'}));
+ if(pf.goal==='eco'&&d.price>0)L.push(`En seconde main, ce serait souvent 2 à 3 fois moins cher.`);
  const bl=budgetLine(d.price);if(bl)L.push(bl);
  const co=co2Of({cat:d.cat,name:what});L.push(`🌱 En seconde main, tu éviterais jusqu’à ~${fmtKg(co.kg*FAB_SHARE)} CO₂e (${eq(co.kg*FAB_SHARE,seedOf(what))}).`);
  L.push(T({complice:'Je te le note dans tes envies et on en reparle dans 5 jours ?',doux:'On le note dans tes envies, et tu décides dans 5 jours ?',sobre:'Proposition : l’ajouter aux envies (5 jours de réflexion).',pep:'Je le mets dans tes envies ? Rendez-vous dans 5 jours !'}));
@@ -88,7 +92,7 @@ function reply(text){
   case 'achat':return replyAchat(d,text);
   case 'budget':{if(!bot().budget)return{t:'Tu n’as pas encore de budget. On en fixe un par mois ?',acts:[30,50,80,120].map(v=>[eur(v),'botBudget',{v}])};
    return{t:open+budgetLine(null)+`<br>Dépensé ce mois-ci : ${eur(monthSpent())}.`}}
-  case 'manque':{const g=gaps();
+  case 'manque':{const g=gaps(),pf=prefs();if(pf.colors.length&&g.length)g[0]+=` (en ${pf.colors[0]}, ta couleur ?)`;
    return{t:g.length?open+`Ce qui pourrait vraiment manquer :<br>• ${g.slice(0,3).join('<br>• ')}<br>${T({complice:'Et pour le reste, ta penderie tient la route 👌',doux:'Pour le reste, tu es bien équipé·e.',sobre:'Le reste est complet.',pep:'Le reste ? Nickel ! ✨'})}`
     :T({complice:'Franchement ? Rien. Ta penderie est complète. Ton portefeuille te remercie 😏',doux:'Rien ne manque vraiment : ta penderie est complète 🌿',sobre:'Rien ne manque.',pep:'Rien ne manque, bravo ! 🎉'})}}
   case 'tenue':{const w=effWeather();if(!w)return{t:'Dis-moi d’abord le temps qu’il fait, sur l’écran du matin.',acts:[['Ce matin','go',{v:'matin'}]]};
@@ -121,9 +125,14 @@ function actBtn([l,a,attrs]){
  if(a==='link')return `<a class="chip" href="${esc(attrs.href)}" target="_blank" rel="noopener">${esc(l)}</a>`;
  return `<button class="chip" data-a="${a}" ${Object.entries(attrs).map(([k,v])=>`data-${k}="${esc(v)}"`).join(' ')}>${esc(l)}</button>`;
 }
+function prefLine(){const p=prefs(),bits=[];
+ if(p.styles.length)bits.push('ton style '+p.styles.map(k=>(STYLES[k]||'créatif').toLowerCase()).join(' et '));
+ if(p.goal)bits.push('ton objectif : '+GOALS[p.goal].toLowerCase());
+ if(p.colors.length)bits.push('tes couleurs ('+p.colors.slice(0,3).join(', ')+')');
+ return bits.length?`J’ai noté ${bits.join(', ')}. `:''}
 function chatSheet(){
  S.chatUnread=false;save();botBadge();
- if(!chat().length)msgPush({from:'bot',t:`${T({complice:'Salut ! Moi c’est',doux:'Bonjour, je suis',sobre:'Je suis',pep:'Hello ! Moi c’est'})} ${esc(botName())}. ${T({complice:'Je connais ta penderie par cœur (et tes petites faiblesses 😏).',doux:'Je connais ta penderie et je suis là pour t’aider à faire de bons choix.',sobre:'Je connais ta penderie et ton budget.',pep:'Je connais ta penderie et on va faire des merveilles ensemble ! ✨'})} Écris-moi ou utilise le micro du clavier.`,acts:quick()});
+ if(!chat().length)msgPush({from:'bot',t:`${T({complice:'Salut ! Moi c’est',doux:'Bonjour, je suis',sobre:'Je suis',pep:'Hello ! Moi c’est'})} ${esc(botName())}. ${T({complice:'Je connais ta penderie par cœur (et tes petites faiblesses 😏).',doux:'Je connais ta penderie et je suis là pour t’aider à faire de bons choix.',sobre:'Je connais ta penderie et ton budget.',pep:'Je connais ta penderie et on va faire des merveilles ensemble ! ✨'})} ${prefLine()}Écris-moi ou utilise le micro du clavier.`,acts:quick()});
  const last=chat()[chat().length-1];
  sheet(`<div class="row between" style="margin-bottom:6px"><h2 style="margin:0">💬 ${bot().name?esc(bot().name):'Ton personal shopper'}</h2><span class="tiny">reste sur ton téléphone</span></div>
  <div id="chatLog">${chat().map(m=>`<div class="msg ${m.from}">${m.t}${m.from==='bot'&&m.acts&&m.acts.length&&m===last?`<div class="chips" style="margin-top:8px">${m.acts.map(actBtn).join('')}</div>`:''}
