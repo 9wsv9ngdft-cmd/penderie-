@@ -23,7 +23,7 @@ const A={
  cancelEdit(){EDIT=null;DR=null;location.hash='penderie'},
  removeAsk(el){removeSheet(el.dataset.id)},
  removeDo(el){const i=item(el.dataset.id);i.removed={date:todayKey(),reason:el.dataset.v};S.pins=S.pins.filter(x=>x!==i.id);OUTS=null;save();closeSheet();render();toast(['jete','perdu'].includes(el.dataset.v)?'Retiré de la penderie':'Merci pour sa seconde vie ♻︎')},
- deleteDo(el){const id=el.dataset.id;S.items=S.items.filter(i=>i.id!==id);S.log.forEach(l=>l.ids=l.ids.filter(x=>x!==id));photos.delete(id);DB.del('photo:'+id);OUTS=null;save();closeSheet();render()},
+ deleteDo(el){const id=el.dataset.id;S.items=S.items.filter(i=>i.id!==id);S.log.forEach(l=>l.ids=l.ids.filter(x=>x!==id));photos.delete(id);DB.del('photo:'+id);squares.delete(id);DB.del('sq:'+id);OUTS=null;save();closeSheet();render()},
  menuOpen(){menuSheet()},
  washOpen(el){washSheet(el&&el.dataset.v)},
  fStored(){F.stored=!F.stored;render()},
@@ -54,8 +54,8 @@ const A={
  batchSave(){
   document.querySelectorAll('[data-bi]').forEach(f=>{const b=BATCH.items[+f.dataset.bi];if(b)b[f.dataset.bf]=f.value});
   for(const b of BATCH.items){const id=uid();
-   S.items.push({id,name:b.name.trim()||`${cat(b.cat).label} ${b.color}`,cat:b.cat,color:b.color,warmth:b.warmth||2,waterproof:!!b.waterproof,origin:null,price:null,season:seasonGuess(b.name),state:'propre',max:null,added:todayKey(),wears:0,sinceWash:0,lastWorn:null});
-   photos.set(id,b.photo);DB.set('photo:'+id,b.photo)}
+   S.items.push({id,name:b.name.trim()||`${cat(b.cat).label} ${b.color}`,cat:b.cat,color:b.color,warmth:b.warmth||2,waterproof:!!b.waterproof,origin:null,price:null,mat:b.mat||null,season:b.season||seasonGuess(b.name),state:'propre',max:null,added:todayKey(),wears:0,sinceWash:0,lastWorn:null});
+   photos.set(id,b.photo);DB.set('photo:'+id,b.photo);saveSquare(id,b.sq)}
   const n=BATCH.items.length;BATCH=null;OUTS=null;save();toast(n+' vêtements ajoutés');location.hash='penderie'},
  washDo(el){const g=el&&el.dataset.g;if(g&&fullGroups().includes(g)){const st=S.stats||(S.stats={});st.fullWash=(st.fullWash||0)+1}
   const wu=$('#washUnder');if(wu&&wu.checked)Object.values(under()).forEach(x=>{x.clean=x.total});
@@ -65,19 +65,20 @@ const A={
  maxInc(){const m=DR.max??cat(DR.cat).max;DR.max=Math.min(30,m+1);$('#maxv').textContent=fmtMax()},
  saveItem(el){
   DR.name=$('#nm').value.trim()||`${cat(DR.cat).label} ${DR.color}`;DR.ref=$('#ref').value.trim();DR.waterproof=$('#wp').checked;DR.price=parsePrice($('#price').value);DR.madeIn=$('#madeIn').value.trim();DR.ecoScore=parseInt($('#ecoScore').value)||null;const bt=$('#bought');if(bt)DR.boughtAt=bt.checked?(DR.boughtAt||todayKey()):null;if(DR.boughtAt&&!EDIT)DR.age=null;
-  const {photo,touched,detected,orig,cutOn,fromWish,...data}=DR;if(orig)data.cut=cutOn!==false;
+  const {photo,sq,touched,detected,orig,cutOn,fromWish,...data}=DR;if(orig)data.cut=cutOn!==false;
   if(EDIT){const k=S.items.findIndex(i=>i.id===EDIT);S.items[k]={...S.items[k],...data}}
   else{data.id=uid();data.added=todayKey();data.wears=0;data.sinceWash=data.state==='porte'?1:0;data.lastWorn=null;S.items.push(data)}
   const id=EDIT||data.id;
   if(fromWish&&!EDIT){const w=(S.wishes||[]).find(x=>x.id===fromWish);if(w)w.decided={date:todayKey(),choice:'achete',itemId:id}}
   if(photo){photos.set(id,photo);DB.set('photo:'+id,photo)}
+  saveSquare(id,sq);
   OUTS=null;save();
   const name=DR.name;EDIT=null;DR=null;
   if(el.dataset.more){render();window.scrollTo({top:0});toast('« '+name+' » ajouté')}
   else{toast('Enregistré');location.hash='penderie'}
  },
  export(){
-  const data=JSON.stringify({app:'penderie',v:1,date:todayKey(),state:S,photos:Object.fromEntries(photos)});
+  const data=JSON.stringify({app:'penderie',v:1,date:todayKey(),state:S,photos:Object.fromEntries(photos),squares:Object.fromEntries(squares)});
   try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'application/json'}));a.download=`dressup-${todayKey()}.json`;document.body.appendChild(a);a.click();a.remove();toast('Sauvegarde téléchargée')}catch(e){toast('Export impossible ici')}
  },
  wipeAsk(){sheet(`<h2 style="margin-top:0">Tout effacer ?</h2><p>Vêtements, photos et historique seront supprimés de cet appareil. Pense à sauvegarder avant.</p><button class="btn clay block" data-a="wipeDo">Oui, tout effacer</button><div class="spacer"></div><button class="btn ghost block" data-a="close">Annuler</button>`)},
@@ -92,15 +93,9 @@ function keepDraftInputs(){if(!DR)return;const mi=$('#madeIn'),es=$('#ecoScore')
 async function handleImage(blob){
  if(!DR)DR=newDraft();keepDraftInputs();
  if((S.ai&&!AI)||(S.cut&&!CUT))toast('Analyse…');else if(S.cut)toast('Détourage…');
- try{const {canvas}=await compress(blob);const r=await analyzeCanvas(canvas);const t=DR.touched||{};
-  DR.photo=r.photo;DR.orig=r.orig||null;DR.cutOn=r.orig?true:undefined;
-  if(!t.color)DR.color=r.color;
-  if(r.cat&&!t.cat&&!EDIT){DR.cat=r.cat;DR.max=null;if(!t.warmth)DR.warmth=r.warmth;if(r.waterproof)DR.waterproof=true;if(!t.season)DR.season=seasonGuess(r.noun)}
-  if(r.mat&&!t.mat)DR.mat=r.mat;
-  if(!DR.name.trim()&&!EDIT)DR.name=r.motif?r.noun:`${r.noun||cat(DR.cat).label} ${DR.color==='motif'?'à motif':DR.color}`;
-  DR.detected=[r.noun||(r.cat?cat(r.cat).label:null),DR.color].filter(Boolean).join(' · ');
-  if(r.aiErr||r.cutErr)toast(IN_PREVIEW?'IA indisponible dans l’aperçu':'Une partie de l’analyse a échoué (connexion ?)');
-  render()}catch(err){toast('Image illisible')}
+ try{const {canvas}=await compress(blob);const m=Math.min(canvas.width,canvas.height)*.6;
+  const sq=cropSquare(canvas,(canvas.width-m)/2,(canvas.height-m)/2,m);
+  applyDraftResult(await processShot(canvas,sq))}catch(err){toast('Image illisible')}
 }
 document.addEventListener('paste',e=>{if(VIEW!=='ajout'||BATCH)return;const f=[...((e.clipboardData&&e.clipboardData.items)||[])].find(i=>i.type.startsWith('image/'));if(f){e.preventDefault();handleImage(f.getAsFile())}});
 document.addEventListener('change',async e=>{
@@ -117,5 +112,5 @@ document.addEventListener('change',async e=>{
   if(S.ai){aiMsg('Chargement…');aiLoad().then(()=>{toast('Reconnaissance prête');if(VIEW==='ajout')render()}).catch(()=>{S.ai=false;save();toast(IN_PREVIEW?'Indisponible dans l’aperçu : marche dans la version complète':'Téléchargement impossible (connexion ?)');if(VIEW==='ajout')render()})}}
  if(e.target.id==='imp'&&e.target.files[0]){try{const j=JSON.parse(await e.target.files[0].text());if(j.app!=='penderie')throw 0;
    for(const k of await DB.keys())DB.del(k);photos.clear();S=Object.assign({v:1,items:[],log:[],pins:[]},j.state);
-   Object.entries(j.photos||{}).forEach(([id,p])=>{photos.set(id,p);DB.set('photo:'+id,p)});save();OUTS=null;render();toast('Penderie restaurée')}catch(err){toast('Fichier non reconnu')}}
+   squares.clear();Object.entries(j.photos||{}).forEach(([id,p])=>{photos.set(id,p);DB.set('photo:'+id,p)});Object.entries(j.squares||{}).forEach(([id,p])=>saveSquare(id,p));save();OUTS=null;render();toast('Penderie restaurée')}catch(err){toast('Fichier non reconnu')}}
 });

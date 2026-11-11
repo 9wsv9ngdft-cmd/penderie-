@@ -137,3 +137,23 @@ code{background:#ece5d6;padding:1px 6px;border-radius:6px;font-size:13px;word-br
 .msg .fb{margin-top:6px;font-size:13px;opacity:.7}.msg .fb button{background:none;border:0;font-size:14px;cursor:pointer;padding:0 6px 0 0}
 .chatbar{position:sticky;bottom:0;background:var(--paper);padding-top:8px}
 .menu-btn{position:fixed;top:calc(env(safe-area-inset-top) + 12px);right:max(14px,calc(50% - 266px));width:44px;height:44px;border-radius:50%;background:var(--card);border:1.5px solid var(--line);font-size:20px;color:var(--ink);z-index:9;cursor:pointer;box-shadow:0 4px 12px rgba(30,38,32,.08)}
+#scan{position:fixed;inset:0;z-index:60;background:#000;color:#fff}
+#scan video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#scan.nocam video{display:none}
+.scan-frame{position:absolute;left:50%;top:44%;width:min(72vw,380px);aspect-ratio:1;transform:translate(-50%,-50%);border:3px solid rgba(255,255,255,.95);border-radius:22px;box-shadow:0 0 0 9999px rgba(0,0,0,.45)}
+.scan-top{position:absolute;top:calc(env(safe-area-inset-top) + 12px);left:0;right:0;display:flex;align-items:center;gap:12px;padding:0 16px;font-size:15px;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.scan-x{width:40px;height:40px;border-radius:50%;border:0;background:rgba(0,0,0,.45);color:#fff;font-size:18px;flex:none}
+.scan-strip{position:absolute;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom) + 118px);display:flex;gap:8px;overflow-x:auto}
+.scan-strip div{width:52px;height:52px;flex:none;border-radius:10px;background-size:cover;border:2px solid #fff}
+.scan-bar{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 24px);display:flex;align-items:center;justify-content:space-around}
+.scan-shot{width:76px;height:76px;border-radius:50%;border:5px solid #fff;background:rgba(255,255,255,.25);cursor:pointer}
+.scan-shot:active{background:#fff}
+.scan-side{min-width:92px;padding:10px 14px;border-radius:999px;border:0;background:rgba(0,0,0,.5);color:#fff;font:inherit;font-weight:600;text-align:center;cursor:pointer}
+.scan-frame::before{content:"";position:absolute;inset:0;border-radius:19px;background:#fff;opacity:0;pointer-events:none}
+.scan-ok{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(.6);background:rgba(46,90,58,.92);color:#fff;font-weight:700;padding:10px 18px;border-radius:999px;opacity:0;white-space:nowrap;pointer-events:none}
+.scan-frame.snap{animation:snapFrame .45s ease-out}
+.scan-frame.snap::before{animation:snapVeil .5s ease-out}
+.scan-frame.snap .scan-ok{animation:snapOk .9s ease-out}
+@keyframes snapFrame{0%{transform:translate(-50%,-50%) scale(1)}30%{transform:translate(-50%,-50%) scale(.94)}100%{transform:translate(-50%,-50%) scale(1)}}
+@keyframes snapVeil{0%{opacity:.85}100%{opacity:0}}
+@keyframes snapOk{0%{opacity:0;transform:translate(-50%,-50%) scale(.6)}25%{opacity:1;transform:translate(-50%,-50%) scale(1.05)}70%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(1)}}
