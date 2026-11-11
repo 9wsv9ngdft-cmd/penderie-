@@ -61,7 +61,7 @@ const A={
  maxDec(){const m=DR.max??cat(DR.cat).max;DR.max=Math.max(0,m-1);$('#maxv').textContent=fmtMax()},
  maxInc(){const m=DR.max??cat(DR.cat).max;DR.max=Math.min(30,m+1);$('#maxv').textContent=fmtMax()},
  saveItem(el){
-  DR.name=$('#nm').value.trim()||`${cat(DR.cat).label} ${DR.color}`;DR.ref=$('#ref').value.trim();DR.waterproof=$('#wp').checked;DR.price=parsePrice($('#price').value);const bt=$('#bought');if(bt)DR.boughtAt=bt.checked?(DR.boughtAt||todayKey()):null;if(DR.boughtAt&&!EDIT)DR.age=null;
+  DR.name=$('#nm').value.trim()||`${cat(DR.cat).label} ${DR.color}`;DR.ref=$('#ref').value.trim();DR.waterproof=$('#wp').checked;DR.price=parsePrice($('#price').value);DR.madeIn=$('#madeIn').value.trim();DR.ecoScore=parseInt($('#ecoScore').value)||null;const bt=$('#bought');if(bt)DR.boughtAt=bt.checked?(DR.boughtAt||todayKey()):null;if(DR.boughtAt&&!EDIT)DR.age=null;
   const {photo,touched,detected,orig,cutOn,fromWish,...data}=DR;if(orig)data.cut=cutOn!==false;
   if(EDIT){const k=S.items.findIndex(i=>i.id===EDIT);S.items[k]={...S.items[k],...data}}
   else{data.id=uid();data.added=todayKey();data.wears=0;data.sinceWash=data.state==='porte'?1:0;data.lastWorn=null;S.items.push(data)}
@@ -85,7 +85,7 @@ const fmtMax=()=>{const m=DR.max??cat(DR.cat).max;return m===0?'jamais sale':m};
 document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(!el)return;const f=A[el.dataset.a];if(f){e.preventDefault();f(el)}});
 document.addEventListener('submit',e=>{const f=e.target.closest('form[data-f=city]');if(!f)return;e.preventDefault();setCity(f.city.value)});
 const parsePrice=v=>{const n=parseFloat(String(v||'').replace(',','.').replace(/[^0-9.]/g,''));return n>0?Math.round(n*100)/100:null};
-function keepDraftInputs(){if(!DR)return;const n=$('#nm'),r=$('#ref'),wp=$('#wp'),pr=$('#price');if(n)DR.name=n.value;if(r)DR.ref=r.value;if(wp)DR.waterproof=wp.checked;if(pr)DR.price=parsePrice(pr.value)}
+function keepDraftInputs(){if(!DR)return;const mi=$('#madeIn'),es=$('#ecoScore');if(mi)DR.madeIn=mi.value;if(es)DR.ecoScore=parseInt(es.value)||null;const n=$('#nm'),r=$('#ref'),wp=$('#wp'),pr=$('#price');if(n)DR.name=n.value;if(r)DR.ref=r.value;if(wp)DR.waterproof=wp.checked;if(pr)DR.price=parsePrice(pr.value)}
 async function handleImage(blob){
  if(!DR)DR=newDraft();keepDraftInputs();
  if((S.ai&&!AI)||(S.cut&&!CUT))toast('Analyse…');else if(S.cut)toast('Détourage…');
@@ -93,6 +93,7 @@ async function handleImage(blob){
   DR.photo=r.photo;DR.orig=r.orig||null;DR.cutOn=r.orig?true:undefined;
   if(!t.color)DR.color=r.color;
   if(r.cat&&!t.cat&&!EDIT){DR.cat=r.cat;DR.max=null;if(!t.warmth)DR.warmth=r.warmth;if(r.waterproof)DR.waterproof=true;if(!t.season)DR.season=seasonGuess(r.noun)}
+  if(r.mat&&!t.mat)DR.mat=r.mat;
   if(!DR.name.trim()&&!EDIT)DR.name=r.motif?r.noun:`${r.noun||cat(DR.cat).label} ${DR.color==='motif'?'à motif':DR.color}`;
   DR.detected=[r.noun||(r.cat?cat(r.cat).label:null),DR.color].filter(Boolean).join(' · ');
   if(r.aiErr||r.cutErr)toast(IN_PREVIEW?'IA indisponible dans l’aperçu':'Une partie de l’analyse a échoué (connexion ?)');

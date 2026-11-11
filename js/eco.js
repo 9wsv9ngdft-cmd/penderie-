@@ -54,7 +54,8 @@ function pastWears(i){
  return Math.round(w/d*365*AGES[i.age][1]);
 }
 const totalWears=i=>(i.wears||0)+(pastWears(i)||0);
-const cpp=i=>i.price>0&&pastWears(i)!==null?i.price/Math.max(1,totalWears(i)):null;
+// coût net : prix d'achat moins ce que tu as récupéré en le revendant
+const cpp=i=>i.price>0&&pastWears(i)!==null?Math.max(0,i.price-(i.resale||0))/Math.max(1,totalWears(i)):null;
 function projection(i){
  const w=i.wears||0,age=daysSince(i.added);
  if(!(i.price>0)||w<2||age<14||pastWears(i)===null)return null;
@@ -110,7 +111,7 @@ const SEASONS={toutes:'Toutes saisons',ete:'Été',hiver:'Hiver'};
 const seasonByDate=(d=new Date())=>{const m=d.getMonth()+1;return m>=4&&m<=9?'ete':'hiver'};
 const curSeason=()=>S.season||seasonByDate();
 const stored=i=>!!i.season&&i.season!=='toutes'&&i.season!==curSeason();
-const inUse=()=>active().filter(i=>!stored(i)&&!paused(i));
+const inUse=()=>active().filter(i=>!stored(i)&&!paused(i)&&!outOfCircuit(i));
 const seasonGuess=n=>/short|sandale|débardeur|en lin/i.test(n||'')?'ete':/doudoune|manteau|polaire|en laine|bottine/i.test(n||'')?'hiver':'toutes';
 function seasonNotice(){
  const next=seasonByDate();if(next===curSeason())return'';

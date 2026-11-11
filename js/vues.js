@@ -51,7 +51,7 @@ function vMatin(){
  if(!active().length)return h+`<div class="card empty"><div class="serif">Ta penderie est vide</div><p class="muted">Commence par photographier quelques vêtements : un haut, un bas, des chaussures suffisent pour une première tenue.</p><a class="btn" href="#ajout">Ajouter un vêtement</a></div>`;
  const w=effWeather();
  h+=weatherCard(w);
- h+=seasonNotice()+laundryNotice()+wishNotice();
+ h+=seasonNotice()+laundryNotice()+wishNotice()+circularNotice();
  const todayLog=S.log.find(l=>l.date===todayKey());
  if(todayLog){
   const its=todayLog.ids.map(item).filter(Boolean);
@@ -79,7 +79,7 @@ function vPenderie(){
  list.sort((a,b)=>(a.cat>b.cat?1:a.cat<b.cat?-1:0)||a.name.localeCompare(b.name));
  let h=`<p class="eyebrow">${all.length-nStored} pièce${all.length-nStored>1?'s':''} · mode ${SEASONS[curSeason()].toLowerCase()}</p><h1>Penderie</h1>`;
  h+=seasonNotice()+laundryCard();
- if(favs().length)h+=`<button class="btn sm ghost" data-a="favsOpen" style="margin-bottom:12px">♥ Tenues favorites (${favs().length})</button>`;
+ h+=`<div class="row" style="margin-bottom:12px">${favs().length?`<button class="btn sm ghost" data-a="favsOpen">♥ Tenues favorites (${favs().length})</button>`:''}<button class="btn sm ghost" data-a="tripOpen">${S.trip?'🧳 Ma valise':'🧳 Préparer une valise'}</button></div>`;
  h+=`<div class="chips scroll">${[['all','Tout'],...CATS.map(c=>[c.id,c.label])].map(([v,l])=>`<button class="chip ${F.cat===v?'on':''}" data-a="fCat" data-v="${v}">${l}</button>`).join('')}</div><div class="spacer"></div>`;
  h+=`<div class="chips scroll">${[['all','Tous états'],...Object.entries(STATES)].map(([v,l])=>`<button class="chip ${F.state===v?'on':''}" data-a="fState" data-v="${v}">${l}${v!=='all'?` · ${act.filter(i=>i.state===v).length}`:''}</button>`).join('')}${nStored||F.stored?`<button class="chip ${F.stored?'on':''}" data-a="fStored">Rangés · ${nStored}</button>`:''}</div><div class="spacer"></div>`;
  if(!list.length)h+=`<div class="empty"><p class="muted">${act.length?'Rien ici avec ces filtres.':'Aucun vêtement pour l’instant.'}</p></div>`;
@@ -121,6 +121,9 @@ function vAjout(){
  <p class="label">Provenance</p><div class="chips">${Object.entries(ORIGINS).map(([k,l])=>`<button class="chip ${originOf(DR)===k?'on':''}" data-a="dr" data-k="origin" data-v="${k}">${l}</button>`).join('')}</div>
  <p class="label">Prix d’achat <span style="text-transform:none;font-weight:400">(facultatif)</span></p><div class="row" style="flex-wrap:nowrap"><input type="text" inputmode="decimal" id="price" value="${DR.price>0?String(DR.price).replace('.',','):''}" placeholder="ex. 35" autocomplete="off" style="max-width:140px"><span class="muted">€</span></div><p class="tiny" style="margin-top:6px">Pour calculer ce que te coûte chaque port.</p>
  ${EDIT&&DR.boughtAt?'':`<p class="label">Acheté il y a… <span style="text-transform:none;font-weight:400">(facultatif)</span></p><div class="chips">${Object.entries(AGES).map(([k,[l]])=>`<button class="chip ${DR.age===k?'on':''}" data-a="dr" data-k="age" data-v="${k}">${l}</button>`).join('')}</div><p class="tiny" style="margin-top:6px">Pour estimer combien de fois tu l’as porté avant l’app.</p>`}
+ <p class="label">Matière principale <span style="text-transform:none;font-weight:400">(facultatif)</span></p><div class="chips">${Object.entries(MATIERES).map(([k,l])=>`<button class="chip ${DR.mat===k?'on':''}" data-a="dr" data-k="mat" data-v="${k}">${l}</button>`).join('')}</div>
+ <p class="label">Fabriqué en <span style="text-transform:none;font-weight:400">(voir l’étiquette)</span></p><input type="text" id="madeIn" list="pays" value="${esc(DR.madeIn||'')}" placeholder="ex. Portugal" autocomplete="off"><datalist id="pays">${['France','Portugal','Italie','Espagne','Turquie','Maroc','Tunisie','Roumanie','Chine','Bangladesh','Inde','Pakistan','Vietnam','Cambodge','Indonésie','Sri Lanka','Myanmar'].map(p=>`<option value="${p}">`).join('')}</datalist>
+ <p class="label">Coût environnemental <span style="text-transform:none;font-weight:400">(s’il est sur l’étiquette)</span></p><div class="row" style="flex-wrap:nowrap"><input type="text" inputmode="numeric" id="ecoScore" value="${DR.ecoScore||''}" placeholder="ex. 850" style="max-width:140px"><span class="muted">points</span></div>
  <p class="label">Marque, référence ou lien <span style="text-transform:none;font-weight:400">(facultatif)</span></p><input type="text" id="ref" value="${esc(DR.ref||'')}" placeholder="ex. Uniqlo 455123, ou lien du produit" autocomplete="off"><p class="tiny" style="margin-top:6px">Utile le jour où tu le revends ou le donnes.</p>
  <p class="label">Ports avant lavage</p><div class="stepper"><button data-a="maxDec">−</button><b id="maxv">${m===0?'jamais sale':m}</b><button data-a="maxInc">+</button></div><p class="tiny" style="margin-top:6px">Laver moins souvent = moins d’eau, d’énergie et d’usure. Aérer un pull entre deux ports suffit souvent.</p>
  <div class="spacer"></div>
@@ -149,11 +152,12 @@ function vBilan(){
   <div class="stat"><b>${act.length?Math.round(sh/act.length*100):0}%</b><span>de seconde main</span></div>
  </div>
  <h2>Objectif 30 ports</h2><div class="card"><p>${thirty} pièce${thirty>1?'s':''} sur ${act.length} ont atteint 30 ports.</p><div class="bar"><i style="width:${act.length?thirty/act.length*100:0}%"></i></div><p class="tiny">Porter un vêtement plus longtemps est le geste qui réduit le plus son impact : l’essentiel de l’empreinte vient de la fabrication.</p></div>`;
- h+=costBilan();
+ h+=costBilan()+co2Bilan();
  h+=`<h2>Un peu oubliés</h2>`;
  if(dormant.length)h+=`<p class="tiny" style="margin-top:-4px">Pas portés depuis 3 mois (ou jamais depuis leur ajout). Remets-les en avant… ou offre-leur une seconde vie.</p><div class="hlist">${dormant.map(i=>`<button class="it" data-a="open" data-id="${i.id}">${thumb(i)}<div class="nm">${esc(i.name)}</div><div class="mt">${i.lastWorn?daysSince(i.lastWorn)+' j':'jamais porté'}${i.boost?' · en avant':''}</div></button>`).join('')}</div>`;
  else h+=`<p class="muted">Rien qui dort. Toute ta penderie vit !</p>`;
  h+=`<h2>À réparer</h2>`;
+ if(rep.length>=3)h+=`<div class="notice">${rep.length} vêtements attendent une réparation : sors le kit couture une fois pour tous. Une session, et ils repartent !</div>`;
  if(rep.length)h+=`<div class="hlist">${rep.map(i=>`<button class="it" data-a="open" data-id="${i.id}">${thumb(i)}<div class="nm">${esc(i.name)}</div></button>`).join('')}</div><div class="spacer"></div>`;
  h+=`<div class="card">${REPAIRS.map(([t,p])=>`<details><summary>${t}</summary><p>${p}</p></details>`).join('')}</div>
  <div class="card"><h3>Ailleurs que dans la poubelle</h3><p class="tiny">Retoucheurs labellisés « bonus réparation » (une partie de la réparation est prise en charge), points de collecte textile, recycleries :</p>
@@ -162,12 +166,13 @@ function vBilan(){
  h+=`<h2>Réglages</h2>`;
  if(IN_PREVIEW)h+=`<div class="notice">Tu es dans l’<b>aperçu</b> : les données restent dans ce navigateur, mais la météo auto et l’export de sauvegarde sont désactivés. Pour la vraie app, installe la version complète (voir mon message).</div>`;
  h+=`<div class="card"><p class="label" style="margin-top:0">Saison en cours</p><div class="chips">${['ete','hiver'].map(k=>`<button class="chip ${curSeason()===k?'on':''}" data-a="seasonSwitch" data-v="${k}">${SEASONS[k]}</button>`).join('')}</div>
+  <p class="label">Ce qui te parle (pour les équivalences CO₂)</p><div class="chips">${Object.entries(INTERESTS).map(([k,l])=>`<button class="chip ${(S.interests||[]).includes(k)?'on':''}" data-a="interest" data-v="${k}">${l}</button>`).join('')}</div>
   <p class="label">Ta machine à laver</p><div class="chips">${[5,6,7,8,9,10].map(k=>`<button class="chip ${capKg()===k?'on':''}" data-a="setKg" data-v="${k}">${k} kg</button>`).join('')}</div></div>
  <div class="card">
   ${IN_PREVIEW?'':`<p><b>Ville météo :</b> ${S.city?esc(S.city.name):'—'}</p><form class="row" data-f="city" style="flex-wrap:nowrap;margin-bottom:12px"><input type="search" name="city" placeholder="Changer de ville" autocomplete="off"><button class="btn sm">OK</button></form>`}
   <p class="tiny">Stockage : ${DB.ok?'sur cet appareil (IndexedDB)':'temporaire — sera perdu à la fermeture'}. Aucune donnée n’est envoyée ailleurs${IN_PREVIEW?'':' (seule la position arrondie de ta ville part vers Open-Meteo pour la météo)'}.</p>
   <div class="row">${IN_PREVIEW?'':`<button class="btn sm soft" data-a="export">Sauvegarder (fichier)</button>`}<label class="btn sm ghost">Restaurer<input type="file" accept="application/json" id="imp" hidden></label></div>
-  <div class="spacer"></div><button class="btn sm danger" data-a="wipeAsk">Tout effacer</button>
+  <div class="spacer"></div><div class="row"><button class="btn sm ghost" data-a="onbOpen">Revoir l’accueil</button><button class="btn sm danger" data-a="wipeAsk">Tout effacer</button></div>
  </div>
  ${IN_PREVIEW?'':`<div class="card"><h3>Raccourci du matin</h3><p class="tiny">App Raccourcis → Automatisation → Heure de la journée (ex. 7 h 30) → action « Ouvrir les URL » :</p><p><code>${esc(location.origin+location.pathname)}#matin</code></p><p class="tiny">Utilise toujours le même navigateur (ou toujours l’icône de l’écran d’accueil) : sur iPhone, les deux ont des stockages séparés.</p></div>`}`;
  return h;
@@ -192,12 +197,14 @@ function itemSheet(id){
  <div class="stats3"><div><b>${w}</b><span>ports</span></div><div><b>${m?`${i.sinceWash||0}/${m}`:'—'}</b><span>depuis lavage</span></div><div><b>${d===null?'jamais':d===0?'auj.':d+' j'}</b><span>dernier port</span></div></div>
  <div class="bar"><i style="width:${Math.min(100,w/30*100)}%"></i></div><p class="tiny">${w>=30?'Objectif 30 ports atteint 🌱':`Encore ${30-w} ports pour l’objectif 30.`}</p>
  <p class="label">État</p><div class="chips">${Object.entries(STATES).map(([k,l])=>`<button class="chip ${i.state===k?'on':''}" data-a="setState" data-id="${i.id}" data-v="${k}">${l}</button>`).join('')}</div>
- <div class="spacer"></div>${costCard(i)}
+ ${i.sale?`<p class="notice" style="margin:8px 0">En vente${i.sale.price?' à '+eur(i.sale.price):''} : il n’est plus proposé dans les tenues.</p>`:''}${i.loan?`<p class="notice" style="margin:8px 0">Prêté à ${esc(i.loan.to)} depuis le ${new Date(i.loan.since+'T12:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long'})}.</p>`:''}${i.swap?`<p class="notice" style="margin:8px 0">Mis de côté pour un troc.</p>`:''}
+ <div class="spacer"></div>${costCard(i)}${co2Card(i)}${careTip(i)?`<p class="tiny" style="margin:0 0 12px">🧺 ${careTip(i)}</p>`:''}
  ${i.state==='reparer'?`<p class="tiny" style="margin-top:10px">Il ne sera plus proposé dans les tenues. Des astuces de réparation t’attendent dans Bilan.</p>`:''}
  <div class="spacer"></div>
  ${!i.boost&&(i.lastWorn?d>=30:true)?`<button class="btn soft block" data-a="boost" data-id="${i.id}">Me le proposer bientôt</button><div class="spacer"></div>`:''}
  ${photos.get(i.id)&&!i.cut?`<button class="btn sm soft block" data-a="cutItem" data-id="${i.id}" style="margin-bottom:10px">Retirer le fond de la photo</button>`:''}
- <div class="row"><button class="btn sm ghost" data-a="edit" data-id="${i.id}">Modifier</button><button class="btn sm danger" data-a="removeAsk" data-id="${i.id}">Sortir de la penderie</button></div>`);
+ <button class="btn sm ghost block" data-a="edit" data-id="${i.id}" style="margin-bottom:10px">Modifier</button>
+ <button class="btn block" data-a="secondLife" data-id="${i.id}">♻︎ Seconde vie : vendre, donner…</button>`);
 }
 function removeSheet(id){const i=item(id);
  sheet(`<h2 style="margin-top:0">Où part « ${esc(i.name)} » ?</h2><p class="tiny">Il reste dans ton historique pour le bilan.</p>${REASONS.map(([k,l])=>`<button class="btn ${['jete','perdu'].includes(k)?'ghost':'soft'} block" style="margin-bottom:8px" data-a="removeDo" data-id="${id}" data-v="${k}">${l}</button>`).join('')}<div class="spacer"></div><button class="btn sm danger" data-a="deleteDo" data-id="${id}">Supprimer définitivement (erreur de saisie)</button>`);

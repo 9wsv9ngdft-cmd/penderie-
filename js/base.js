@@ -56,7 +56,7 @@ const maxOf=i=>i.max??cat(i.cat).max;
 
 /* ---------- vignette ---------- */
 function thumb(i,cls='ph',badge=false){
- const p=photos.get(i.id);const b=badge?`<span class="badge b-${i.state}">${STATES[i.state]}</span>`:'';
+ const p=photos.get(i.id);const tag=i.sale?'En vente':i.loan?'Prêté':i.swap?'À échanger':null;const b=badge?`<span class="badge b-${tag?'porte':i.state}">${tag||STATES[i.state]}</span>`:'';
  if(p)return `<div class="${cls}" style="background-image:url('${p}')">${b}</div>`;
  return `<div class="${cls} sw" style="background:${colorVal(i.color)}">${b}<span>${esc(cat(i.cat).label)}</span></div>`;
 }

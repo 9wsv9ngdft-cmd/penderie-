@@ -21,6 +21,7 @@ window.addEventListener('hashchange',route);
  S.items.forEach(i=>{if(!i.origin&&i.secondHand)i.origin='occasion'});
  for(const k of await DB.keys())if(String(k).startsWith('photo:')){const p=await DB.get(k);if(p)photos.set(k.slice(6),p)}
  route();
+ if(!S.onboarded&&!S.items.length){ONB=0;onbSheet()}
  if(S.ai)aiLoad().catch(()=>{});
  if(S.cut)cutLoad().catch(()=>{});
  if(!IN_PREVIEW&&'serviceWorker' in navigator){try{navigator.serviceWorker.register('sw.js')}catch(e){}}

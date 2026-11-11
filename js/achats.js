@@ -50,6 +50,7 @@ function wishCard(w){
  <span class="tiny">${due?'<b style="color:var(--clay)">À décider</b>':`En réflexion : encore ${wishLeft(w)} jour${wishLeft(w)>1?'s':''}`}</span>
  ${w.ref&&/^https?:\/\//i.test(w.ref)?`<br><a class="tiny" href="${esc(w.ref)}" target="_blank" rel="noopener">Voir le produit</a>`:''}</div></div>
  ${s.all.length?`<p class="tiny" style="margin:10px 0 6px">Tu as déjà <b>${s.all.length} ${lbl}${s.all.length>1&&!/s$/.test(lbl)?'s':''}</b>${s.col.length?`, dont ${s.col.length} ${esc(w.color)}`:''} :</p><div class="hlist">${s.all.slice(0,8).map(i=>`<button class="it" style="width:70px" data-a="open" data-id="${i.id}">${thumb(i)}</button>`).join('')}</div>`:`<p class="tiny" style="margin-top:10px">Tu n’as rien de ce type dans ta penderie.</p>`}
+ ${/mariage|soir[ée]e|c[ée]r[ée]monie|costume|smoking|gala/i.test(w.name)||(w.cat==='robe'&&w.price>=80)?`<p class="tiny" style="margin-top:10px">💡 Pour une occasion ponctuelle, et si tu la louais ou l’empruntais ? Les sites de location de vêtements et tes proches peuvent dépanner.</p>`:''}
  ${due?`<div class="row" style="margin-top:12px"><button class="btn sm" data-a="wishBuy" data-id="${w.id}">Je l’achète</button><button class="btn sm soft" data-a="wishDrop" data-id="${w.id}">J’y renonce</button><button class="btn sm ghost" data-a="wishSnooze" data-id="${w.id}">Encore ${WISH_DAYS} jours</button></div>`
  :`<div class="row" style="margin-top:10px"><button class="btn sm ghost" data-a="wishDrop" data-id="${w.id}">J’y renonce déjà</button></div>`}</div>`;
 }
