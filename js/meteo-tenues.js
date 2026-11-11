@@ -1,4 +1,4 @@
-// Dress Up — Météo, proposition de tenues, porter / laver
+// Dress Up — Météo, proposition des tenues du jour, porter / annuler
 "use strict";
 /* ---------- météo ---------- */
 let WX_LOADING=false,WX_FAIL=false;
@@ -9,11 +9,13 @@ function effWeather(){const t=todayKey();
 async function loadWeather(){
  if(!S.city||WX_LOADING)return;WX_LOADING=true;
  try{
-  const u=`https://api.open-meteo.com/v1/forecast?latitude=${S.city.lat}&longitude=${S.city.lon}&daily=temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_max,weather_code&timezone=auto&forecast_days=1`;
+  const u=`https://api.open-meteo.com/v1/forecast?latitude=${S.city.lat}&longitude=${S.city.lon}&hourly=temperature_2m,weather_code,precipitation_probability&daily=temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_probability_max,weather_code&timezone=auto&forecast_days=1`;
   const j=await (await fetch(u)).json();const d=j.daily;
   const code=d.weather_code[0],rainP=d.precipitation_probability_max[0]??0;
   const feels=Math.round(d.apparent_temperature_max[0]*0.6+d.apparent_temperature_min[0]*0.4);
   S.wx={date:todayKey(),tmin:Math.round(d.temperature_2m_min[0]),tmax:Math.round(d.temperature_2m_max[0]),feels,rainP,code,rain:rainP>=50||(code>=51&&code<=67)||(code>=80&&code<=82)||code>=95};
+  // cinq repères dans la journée, pour la frise « heure par heure »
+  try{const hh=j.hourly;S.wx.hours=[8,11,15,18,21].map(h=>({h,t:Math.round(hh.temperature_2m[h]),wet:(hh.precipitation_probability[h]??0)>=50||(hh.weather_code[h]>=51&&hh.weather_code[h]<=67)||(hh.weather_code[h]>=80&&hh.weather_code[h]<=82)||hh.weather_code[h]>=95,cloud:hh.weather_code[h]>=3})).filter(x=>Number.isFinite(x.t))}catch(e){S.wx.hours=[]}
   WX_FAIL=false;OUTS=null;save();
  }catch(e){WX_FAIL=true}
  WX_LOADING=false;if(VIEW==='matin')render();
@@ -35,7 +37,7 @@ function genOutfits(w){
  const b=w.band,rain=!!w.rain,used=new Map(),occ=todayOcc(),mood=todayMood();
  const pick=(c,want)=>{let list=by(c);if(!list.length)return null;
   if(occ==='sport'){const t=list.filter(i=>occsOf(i).includes('sport'));if(t.length)list=t}
-  const pin=list.find(i=>S.pins.includes(i.id));if(pin)return pin;
+  const pin=list.find(i=>S.pins.includes(i.id));if(pin)return{i:pin,s:6}; // même forme que les autres choix : {vêtement, score}
   let best=null,bs=-1e9;
   for(const i of list){
    let s=Math.random()*1.6;

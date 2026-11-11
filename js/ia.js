@@ -23,7 +23,7 @@ function detectColor(src){
 }
 // Type, matière, motif : modèle CLIP (vision + texte) qui tourne dans le navigateur, sur l'appareil.
 // Téléchargé une seule fois depuis Hugging Face, puis gardé en cache. Aucune photo n'est envoyée.
-const CLIP_ID='Xenova/clip-vit-base-patch32',TF_URL='https://cdn.jsdelivr.net/npm/@huggingface/transformers@3';
+const CLIP_ID='Xenova/clip-vit-base-patch32',TF_URL='https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1'; // version figée : une mise à jour se décide ici, elle ne s'applique plus toute seule
 const TYPES=[ // [anglais pour le modèle, catégorie, nom français, chaleur, imperméable]
  ['t-shirt','haut','T-shirt',1],['button-up shirt','haut','Chemise',1],['blouse','haut','Blouse',1],['tank top','haut','Débardeur',1],['polo shirt','haut','Polo',1],['long sleeve top','haut','Haut manches longues',2],
  ['knitted sweater','pull','Pull',2],['hoodie','pull','Sweat à capuche',2],['sweatshirt','pull','Sweat',2],['cardigan','pull','Gilet',2],['fleece jacket','pull','Polaire',3],
@@ -46,9 +46,7 @@ function aiLoad(){
  if(AI)return Promise.resolve(AI);
  if(!AI_LOADING)AI_LOADING=(async()=>{
   const T=await getT();
-  const files={};let last=0;
-  const progress_callback=p=>{if(p.status==='progress'&&p.total){files[p.file]=[p.loaded,p.total];const L=Object.values(files).reduce((a,b)=>a+b[0],0),Tt=Object.values(files).reduce((a,b)=>a+b[1],0);
-   const now=Date.now();if(now-last>400){last=now;aiMsg(`Téléchargement du modèle : ${Math.round(L/1048576)} / ${Math.round(Tt/1048576)} Mo`)}}};
+  const progress_callback=progressCb(aiMsg,'Téléchargement du modèle');
   // Les « étiquettes » texte ne se calculent qu'une fois, puis sont gardées sur l'appareil.
   let txt=await DB.get('clip-text-v2');
   if(!txt){
@@ -84,7 +82,7 @@ async function aiGuess(canvas){
  return{style:si>=0&&ps[si]>.45?[['casual','chic','sport','cosy'][si]]:null,mat:mat?{wool:'laine',cotton:'coton',linen:'lin',denim:'coton',leather:'cuir',fleece:'polyester',silk:'soie','synthetic polyester':'polyester'}[mat[0]]:null,cat:t[1],noun,warmth:Math.max(1,Math.min(3,t[3]+(mat?mat[2]:0))),waterproof:!!t[4],motif:!!pat,conf:c[1]};
 }
 /* Détourage : modèle RMBG-1.4 (BRIA) sur l'appareil, ~45 Mo téléchargés une fois. */
-const RMBG_ID='briaai/RMBG-1.4',BG_COLOR='#EFE9DD';
+const RMBG_ID='briaai/RMBG-1.4',BG_COLOR='#F1EBDF';
 let CUT=null,CUT_LOADING=null,CUT_MSG='';
 function cutMsg(m){CUT_MSG=m;const el=$('#cutstat');if(el)el.textContent=m}
 function cutLoad(){
@@ -122,7 +120,21 @@ function colorFromPixels(id){
   const lum=v=>.3*v[0]+.59*v[1]+.11*v[2];if(Math.abs(lum(A)-lum(B))>110)return 'motif'}
  return top[0][0];
 }
-async function analyzeCanvas(canvas){
+/* ---------- mémoire : une analyse à la fois, modèles libérés hors de l'écran « Ajouter » ---------- */
+let BUSY=0,ANALYSES=Promise.resolve();
+function queued(fn){
+ BUSY++;const run=ANALYSES.then(fn);
+ ANALYSES=run.catch(()=>{}).then(()=>{BUSY--;if(!BUSY&&VIEW!=='ajout')releaseModels()});
+ return run;
+}
+function warmModels(){if(S.ai)aiLoad().catch(()=>{});if(S.cut)cutLoad().catch(()=>{})}
+async function releaseModels(){
+ if(BUSY||(BATCH&&BATCH.busy)||$('#scan'))return;
+ if(AI){const a=AI;AI=null;AI_LOADING=null;aiMsg('');try{await a.vm.dispose()}catch(e){}}
+ if(CUT){const c=CUT;CUT=null;CUT_LOADING=null;cutMsg('');try{await c.model.dispose()}catch(e){}}
+}
+const analyzeCanvas=canvas=>queued(()=>analyzeNow(canvas));
+async function analyzeNow(canvas){
  const r={};let base=canvas,cut=null;
  if(S.cut){try{cut=await cutout(canvas)}catch(e){console.warn(e);r.cutErr=true}}
  if(cut){r.photo=cut.url;r.orig=canvas.toDataURL('image/jpeg',.72);r.color=colorFromPixels(cut.pixels);base=cut.canvas}

@@ -1,10 +1,10 @@
-// Dress Up — Lot 2 : liste d'envies, défis, tenues favorites, occasions
+// Dress Up — Occasions, tenues favorites, envies (5 jours de réflexion), défis
 "use strict";
 
 /* ---------- occasions ---------- */
 const OCCS={quotidien:'Quotidien',boulot:'Boulot',sport:'Sport',soiree:'Soirée'};
 const occsOf=i=>(i.occ&&i.occ.length)?i.occ:['quotidien'];
-const todayOcc=()=>S.occDay&&S.occDay.date===todayKey()?S.occDay.v:((typeof dayOverride==='function'&&dayOverride()||{}).occ||(typeof agenda==='function'&&agenda()[new Date().getDay()])||'quotidien');
+const todayOcc=()=>S.occDay&&S.occDay.date===todayKey()?S.occDay.v:((typeof dayOverride==='function'&&dayOverride()||{}).occ||(typeof agenda==='function'&&agenda()[now().getDay()])||'quotidien');
 // bonus si le vêtement va avec l'occasion du jour, malus s'il est réservé à une autre
 const occScore=(i,occ)=>occsOf(i).includes(occ)?(occ==='quotidien'?0:3.5):-3.5;
 const occChips=()=>`<div class="chips scroll" style="margin-bottom:12px">${Object.entries(OCCS).map(([k,l])=>`<button class="chip ${todayOcc()===k?'on':''}" data-a="setOcc" data-v="${k}">${l}</button>`).join('')}</div>`;
@@ -42,7 +42,7 @@ function similar(w){
  const same=active().filter(i=>i.cat===w.cat);
  return{all:same,col:same.filter(i=>i.color===w.color)};
 }
-function wishThumb(w,cls='ph',st=''){const p=photos.get(w.id);return p?`<div class="${cls}" style="background-image:url('${p}');${st}"></div>`:`<div class="${cls} sw" style="background:${colorVal(w.color)};${st}"><span>${esc(cat(w.cat).label)}</span></div>`}
+function wishThumb(w,cls='ph',st=''){const p=photos.get(w.id);return p?`<div class="${cls}" style="background-image:url('${U(p)}');${st}"></div>`:`<div class="${cls} sw" style="background:${colorVal(w.color)};${st}"><span>${esc(cat(w.cat).label)}</span></div>`}
 function wishCard(w){
  const s=similar(w),due=wishDue(w),lbl=cat(w.cat).label.toLowerCase();
  return `<div class="card"><div class="row" style="flex-wrap:nowrap;align-items:flex-start;gap:12px">${wishThumb(w,'ph mini','width:74px')}
@@ -58,7 +58,7 @@ let WD=null;
 function wishSheet(){
  if(!WD)WD={name:'',cat:'haut',color:'noir',price:null,ref:'',photo:null};
  sheet(`<h2 style="margin-top:0">Noter une envie</h2><p class="tiny">Tu la retrouveras dans ${WISH_DAYS} jours. Souvent, l’envie passe toute seule.</p>
- <label class="photo-drop" style="padding:10px">${WD.photo?`<div class="ph" style="background-image:url('${WD.photo}');max-width:140px"></div>`:''}<input type="file" accept="image/*" id="wpic"><span class="btn sm soft" style="margin-top:${WD.photo?8:0}px">${WD.photo?'Changer l’image':'Ajouter une image (facultatif)'}</span></label>
+ <label class="photo-drop" style="padding:10px">${WD.photo?`<div class="ph" style="background-image:url('${U(WD.photo)}');max-width:140px"></div>`:''}<input type="file" accept="image/*" id="wpic"><span class="btn sm soft" style="margin-top:${WD.photo?8:0}px">${WD.photo?'Changer l’image':'Ajouter une image (facultatif)'}</span></label>
  <p class="label">Quoi ?</p><input type="text" id="wnm" value="${esc(WD.name)}" placeholder="ex. Pull en laine vert" autocomplete="off">
  <p class="label">Catégorie</p><div class="chips">${CATS.map(c=>`<button class="chip ${WD.cat===c.id?'on':''}" data-a="wd" data-k="cat" data-v="${c.id}">${c.label}</button>`).join('')}</div>
  <p class="label">Couleur</p><div class="chips">${COLORS.map(([n,v])=>`<button class="chip ${WD.color===n?'on':''}" data-a="wd" data-k="color" data-v="${n}"><span class="dot" style="background:${v}"></span>${n}</button>`).join('')}</div>
@@ -143,7 +143,7 @@ Object.assign(A,{
   const id=uid(),{photo,touched,...w}=WD;wishes().push({...w,id,added:todayKey(),decided:null});
   if(photo){photos.set(id,photo);DB.set('photo:'+id,photo)}
   WD=null;save();closeSheet();render();toast(`Noté. Rendez-vous dans ${WISH_DAYS} jours`)},
- wishDrop(el){const w=wishes().find(x=>x.id===el.dataset.id);w.decided={date:todayKey(),choice:'renonce'};save();render();toast(w.price>0?`${eur(w.price)} économisés 🌱`:'Envie passée 🌱')},
+ wishDrop(el){const w=wishes().find(x=>x.id===el.dataset.id);w.decided={date:todayKey(),choice:'renonce'};photos.delete(w.id);DB.del('photo:'+w.id);save();render();toast(w.price>0?`${eur(w.price)} économisés 🌱`:'Envie passée 🌱')},
  wishSnooze(el){const w=wishes().find(x=>x.id===el.dataset.id);w.from=todayKey();save();render()},
  wishBuy(el){const w=wishes().find(x=>x.id===el.dataset.id);
   const nb=activeChal('nobuy');

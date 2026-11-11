@@ -63,12 +63,12 @@ const looks=()=>S.looks||(S.looks=[]);
 const lookFor=ids=>{const k=favKey(ids);return [...looks()].reverse().find(l=>favKey(l.ids)===k&&lookPhotos.get(l.id))||null};
 let LOOKSHOW=new Set();
 function lookToggle(ids){const l=lookFor(ids);if(!l)return'';const k=favKey(ids),on=LOOKSHOW.has(k);
- return `<button class="btn sm ghost" style="margin:0 0 10px" data-a="lookShow" data-k="${esc(k)}">${on?'Masquer':'📸 Voir portée'}</button>${on?`<div class="look" style="background-image:url('${lookPhotos.get(l.id)}')"></div>`:''}`}
+ return `<button class="btn sm ghost" style="margin:0 0 10px" data-a="lookShow" data-k="${esc(k)}">${on?'Masquer':'📸 Voir portée'}</button>${on?`<div class="look" style="background-image:url('${U(lookPhotos.get(l.id))}')"></div>`:''}`}
 function lookbookSheet(){
  const ls=[...looks()].reverse().filter(l=>lookPhotos.get(l.id));
  sheet(`<h2 style="margin-top:0">📸 Lookbook</h2>${ls.length?'':'<p class="muted">Pas encore de photo. Après avoir enregistré ta tenue du jour, touche « 📸 Photo miroir ».</p>'}
- <div class="grid">${ls.map(l=>`<div><div class="look" style="background-image:url('${lookPhotos.get(l.id)}');margin:0"></div><p class="tiny" style="margin:4px 2px 0">${new Date(l.date+'T12:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'})}${isFav(l.ids)?' · ♥':''}</p>
-  <button class="btn sm ghost" style="padding:4px 10px;margin-top:4px" data-a="lookDel" data-id="${l.id}">Supprimer</button></div>`).join('')}</div>`);
+ <div class="grid">${ls.map(l=>`<div><div class="look" style="background-image:url('${U(lookPhotos.get(l.id))}');margin:0"></div><p class="tiny" style="margin:4px 2px 0">${new Date(l.date+'T12:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'})}${isFav(l.ids)?' · ♥':''}</p>
+  <button class="btn sm ghost" style="margin-top:4px" data-a="lookDel" data-id="${l.id}">Supprimer</button></div>`).join('')}</div>`);
 }
 async function saveLook(file){
  const l=S.log.find(x=>x.date===todayKey());if(!l){toast('Enregistre d’abord ta tenue du jour');return}
@@ -90,7 +90,7 @@ function dayEditSheet(date){
 }
 // la veille d'un jour prévu : prévenir si un vêtement de la tenue est au sale
 function eveNotice(){
- const t=new Date();t.setDate(t.getDate()+1);const k=todayKey(t);
+ const t=now();t.setDate(t.getDate()+1);const k=todayKey(t);
  const d=S.plan&&S.plan.days.find(x=>x.date===k);if(!d)return'';
  const dirty=d.ids.map(item).filter(i=>i&&i.state==='sale');const ov=dayOverride(k);
  if(!dirty.length)return'';

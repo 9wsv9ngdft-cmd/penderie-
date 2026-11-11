@@ -1,4 +1,4 @@
-// Dress Up — Lot 4 : assistant shopper local (aucune donnée ne sort du téléphone)
+// Dress Up — Assistant shopper local (aucune donnée ne sort du téléphone)
 "use strict";
 
 const TONES={complice:'Complice et taquin',doux:'Doux et bienveillant',sobre:'Sobre et efficace',pep:'Plein d’énergie'};
@@ -12,7 +12,6 @@ const SAMPLE={complice:'Encore un pull gris ? Tu en as déjà 4… 😏',doux:'T
 const normTxt=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[’']/g,' ');
 const INTENTS=[
  ['bonjour',/^(bonjour|salut|coucou|hello|hey|yo|bonsoir)\b/],
- ['merci',/\b(merci|top|super|genial|parfait|cool)\b/],
  ['nom',/(comment tu t appelles|ton nom|qui es tu|t es qui)/],
  ['achat',/(achet|craqu|envie d|je veux (un|une|des)|j ai vu|commander|shopping|soldes|ca vaut le coup|je prends|tentee?|tente par)/],
  ['budget',/(budget|depense|combien.*(reste|depens)|argent|thune|sous\b|fric)/],
@@ -24,6 +23,8 @@ const INTENTS=[
  ['valise',/(valise|voyage|vacances|week ?end|partir)/],
  ['lessive',/(lessive|machine|laver|linge|sale\b|chaussettes|dessous)/],
  ['bilan',/(bilan|stat|co2|carbone|empreinte|ecolo|planete)/],
+ // en dernier, et seulement si le message ne dit que ça : « un top noir » ou « un pull super chaud » parlent d'un vêtement
+ ['merci',/^(merci( beaucoup| bien)?|top|super|genial|parfait|cool|nickel)[ !.]*$|\bmerci\b/],
 ];
 const KW=[['veste','veste'],['blouson','veste'],['manteau','veste'],['doudoune','veste'],['trench','veste'],['parka','veste'],['blazer','veste'],
  ['pull','pull'],['sweat','pull'],['gilet','pull'],['hoodie','pull'],['polaire','pull'],
@@ -63,7 +64,7 @@ function replyAchat(d,text){
   if(sleep.length)L.push(`Et ${sleep.length>1?`${sleep.length} d’entre eux dorment`:'l’un d’eux dort'} depuis plus de 2 mois${sleep.length===1?` (${esc(sleep[0].name)})`:''}.`);
  }else L.push(T({complice:'Tiens, tu n’as rien de ce genre. Ça peut être un vrai manque, pour une fois 😄',doux:'Tu n’as rien de ce type : ça peut combler un vrai manque.',sobre:'Aucun équivalent dans ta penderie.',pep:'Rien de pareil chez toi : ça pourrait être un vrai plus !'}));
  const bl=budgetLine(d.price);if(bl)L.push(bl);
- const co=co2Of({cat:d.cat,name:what});L.push(`🌱 En seconde main, tu éviterais ~${fmtKg(co.kg*FAB_SHARE)} CO₂e (${eq(co.kg*FAB_SHARE,seedOf(what))}).`);
+ const co=co2Of({cat:d.cat,name:what});L.push(`🌱 En seconde main, tu éviterais jusqu’à ~${fmtKg(co.kg*FAB_SHARE)} CO₂e (${eq(co.kg*FAB_SHARE,seedOf(what))}).`);
  L.push(T({complice:'Je te le note dans tes envies et on en reparle dans 5 jours ?',doux:'On le note dans tes envies, et tu décides dans 5 jours ?',sobre:'Proposition : l’ajouter aux envies (5 jours de réflexion).',pep:'Je le mets dans tes envies ? Rendez-vous dans 5 jours !'}));
  const name=(what[0].toUpperCase()+what.slice(1))+(d.col?' '+d.col:'');
  return{t:L.join('<br>'),acts:[['Noter l’envie','botWish',{n:name,c:d.cat,col:d.col||'',p:d.price||''}],['Chercher en seconde main','link',{href:`https://www.vinted.fr/catalog?search_text=${encodeURIComponent(name)}`}],['Laisse tomber 👍','botDrop',{}]]};
@@ -83,7 +84,7 @@ function reply(text){
  switch(d.it){
   case 'bonjour':return{t:`${T({complice:'Salut ! Qu’est-ce qu’on manigance aujourd’hui ?',doux:'Bonjour 🌿 Comment je peux t’aider ?',sobre:'Bonjour. Que veux-tu savoir ?',pep:'Hello ! Prêt·e pour une journée stylée et écolo ?'})}`,acts:quick()};
   case 'merci':return{t:T({complice:'Avec plaisir. Je reste dans le coin 😉',doux:'Avec plaisir 🌱',sobre:'De rien.',pep:'Toujours là pour toi ! 💚'})};
-  case 'nom':return{t:bot().name?`Je m’appelle ${esc(bot().name)}. C’est toi qui as choisi 😊`:'Je n’ai pas encore de nom. Tu m’en donnes un dans Bilan → Réglages ?'};
+  case 'nom':return{t:bot().name?`Je m’appelle ${esc(bot().name)}. C’est toi qui as choisi 😊`:'Je n’ai pas encore de nom. Tu m’en donnes un dans le menu ☰ → Réglages ?'};
   case 'achat':return replyAchat(d,text);
   case 'budget':{if(!bot().budget)return{t:'Tu n’as pas encore de budget. On en fixe un par mois ?',acts:[30,50,80,120].map(v=>[eur(v),'botBudget',{v}])};
    return{t:open+budgetLine(null)+`<br>Dépensé ce mois-ci : ${eur(monthSpent())}.`}}
@@ -101,8 +102,8 @@ function reply(text){
   case 'valise':return{t:open+'Dis-moi où tu pars, je regarde la météo là-bas et je te fais une valise légère.',acts:[['Préparer une valise','tripOpen',{}]]};
   case 'lessive':{const g=laundry(),f=fullGroups();const parts=Object.entries(WASH).filter(([k])=>g[k].items.length).map(([k,l])=>`${l.toLowerCase()} ${Math.round(Math.min(100,g[k].kg/(capKg()*FULL)*100))} %`);
    return{t:(f.length?`Machine pleine : ${f.map(k=>WASH[k].toLowerCase()).join(', ')} ! `:parts.length?`Panier : ${parts.join(', ')}. Pas encore de quoi faire une machine pleine. `:'Rien au sale. ')+(poolTot()||uTot('chaussettes')?`Dessous propres : ${uClean('chaussettes')} paires de chaussettes, ${poolClean()} culottes/boxers/slips.`:'')}}
-  case 'bilan':{const av=S.items.filter(isSecondHand).reduce((s,i)=>s+co2Of(i).kg*FAB_SHARE,0)+((S.stats||{}).repairCo2||0);
-   return{t:open+`Grâce à toi : ~${fmtKg(av)} CO₂e évités (${eq(av,3)}), ${Object.keys(S.badges||{}).length} badge${Object.keys(S.badges||{}).length>1?'s':''}.`,acts:[['Voir le bilan','go',{v:'bilan'}]]}}
+  case 'bilan':{const av=avoidedCo2(),rep=(S.stats||{}).repairs||0;
+   return{t:open+`Grâce à toi : jusqu’à ${fmtKg(av)} CO₂e évités (${eq(av,3)}), ${rep?`${rep} réparation${rep>1?'s':''}, `:''}${Object.keys(S.badges||{}).length} badge${Object.keys(S.badges||{}).length>1?'s':''}.`,acts:[['Voir le bilan','go',{v:'bilan'}]]}}
  }
  return{t:T({complice:'Je ne suis pas sûr de te suivre 🤔 Tu voulais parler de…',doux:'Je ne suis pas sûr de comprendre. Tu voulais parler de…',sobre:'Pas compris. Sujet ?',pep:'Oups, je n’ai pas tout capté ! C’était à propos de…'}),acts:quick()};
 }
@@ -126,7 +127,7 @@ function chatSheet(){
  const last=chat()[chat().length-1];
  sheet(`<div class="row between" style="margin-bottom:6px"><h2 style="margin:0">💬 ${esc(botName())}</h2><span class="tiny">reste sur ton téléphone</span></div>
  <div id="chatLog">${chat().map(m=>`<div class="msg ${m.from}">${m.t}${m.from==='bot'&&m.acts&&m.acts.length&&m===last?`<div class="chips" style="margin-top:8px">${m.acts.map(actBtn).join('')}</div>`:''}
-  ${m.from==='bot'&&m!==chat()[0]?`<div class="fb">${m.fb?(m.fb>0?'👍':'👎'):`<button data-a="botFb" data-id="${m.id}" data-v="1">👍</button><button data-a="botFb" data-id="${m.id}" data-v="-1">👎</button>`}</div>`:''}</div>`).join('')}</div>
+  ${m.from==='bot'&&m!==chat()[0]?`<div class="fb">${m.fb?(m.fb>0?'👍':'👎'):`<button data-a="botFb" data-id="${m.id}" data-v="1" aria-label="Bonne réponse">👍</button><button data-a="botFb" data-id="${m.id}" data-v="-1" aria-label="Réponse à côté">👎</button>`}</div>`:''}</div>`).join('')}</div>
  <form class="row chatbar" data-f="chat" style="flex-wrap:nowrap"><input type="text" name="q" placeholder="Écris ou dicte avec 🎤" autocomplete="off"><button class="btn sm">Envoyer</button></form>`);
  const c=$('.sheet-card');if(c)c.scrollTop=c.scrollHeight;
 }
@@ -136,7 +137,7 @@ function botSay(text){
 }
 document.addEventListener('submit',e=>{const f=e.target.closest('form[data-f=chat]');if(!f)return;e.preventDefault();const v=f.q.value.trim();if(v)botSay(v)});
 
-/* ---------- réglages de l'assistant (accueil + Bilan) ---------- */
+/* ---------- réglages de l'assistant (accueil + Réglages) ---------- */
 function botSettings(inOnb){
  return `${inOnb?'':'<p class="label" style="margin-top:0">Ton assistant</p>'}<input type="text" id="botName" value="${esc(bot().name)}" placeholder="Son nom (ex. Fripe, Léon…)" autocomplete="off">
  <p class="label">Son caractère</p><div class="chips">${Object.entries(TONES).map(([k,l])=>`<button class="chip ${bot().tone===k?'on':''}" data-a="botTone" data-v="${k}" ${inOnb?'data-onb="1"':''}>${l}</button>`).join('')}</div>

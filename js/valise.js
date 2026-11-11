@@ -1,8 +1,8 @@
-// Dress Up — Lot 3 : valise selon la météo de la destination
+// Dress Up — Valise selon la météo de la destination
 "use strict";
 
 let TRIPD=null; // brouillon du formulaire
-const tomorrow=()=>{const d=new Date();d.setDate(d.getDate()+1);return todayKey(d)};
+const tomorrow=()=>{const d=now();d.setDate(d.getDate()+1);return todayKey(d)};
 const addDays=(k,n)=>{const d=new Date(k+'T12:00');d.setDate(d.getDate()+n);return todayKey(d)};
 
 function tripSheet(){

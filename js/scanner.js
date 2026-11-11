@@ -34,19 +34,30 @@ function scanUI(){
  document.body.appendChild(el);return el;
 }
 async function scanOpen(mode){
+ if($('#scan'))return; // déjà ouvert (double appui)
  SCAN={mode,stream:null,pending:0,n:0};
  if(mode==='batch')BATCH={busy:false,done:0,total:0,items:[]};
- const el=scanUI();
+ scanUI();warmModels();await scanCam();
+}
+// (re)démarre la caméra : à l'ouverture, au retour d'arrière-plan, ou si iOS a coupé le flux
+async function scanCam(){
+ const el=$('#scan');if(!el||!SCAN||SCAN.stream||SCAN.starting)return;SCAN.starting=true;const mine=SCAN;
  try{
-  SCAN.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1920}},audio:false});
-  const v=el.querySelector('video');v.srcObject=SCAN.stream;await v.play().catch(()=>{});
+  const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1920}},audio:false});
+  if(SCAN!==mine||!$('#scan')||document.hidden){st.getTracks().forEach(t=>t.stop());return} // fermé entre-temps
+  SCAN.stream=st;st.getVideoTracks().forEach(t=>t.addEventListener('ended',()=>{if(SCAN===mine&&SCAN.stream===st){SCAN.stream=null;if(!document.hidden)scanCam()}}));
+  const v=el.querySelector('video');v.srcObject=st;await v.play().catch(()=>{});
+  el.classList.remove('nocam');scanHint();
  }catch(e){
   $('#scanHint').textContent=IN_PREVIEW?'Caméra indisponible dans l’aperçu : utilise « Galerie ».':'Caméra refusée : utilise « Galerie », ou autorise la caméra dans les réglages du navigateur.';
   el.classList.add('nocam');
- }
+ }finally{mine.starting=false}
 }
+function scanPause(){if(SCAN&&SCAN.stream){const st=SCAN.stream;SCAN.stream=null;st.getTracks().forEach(t=>t.stop())}}
+document.addEventListener('visibilitychange',()=>{if(!$('#scan'))return;if(document.hidden)scanPause();else scanCam()});
+function scanHint(){const h=$('#scanHint');if(h&&SCAN&&!$('#scan').classList.contains('nocam'))h.textContent=SCAN.pending>1?`Continue : ${SCAN.pending} photos en attente d’analyse`:'Place le vêtement dans le carré'}
 function scanClose(){
- if(SCAN&&SCAN.stream)SCAN.stream.getTracks().forEach(t=>t.stop());
+ scanPause();
  const el=$('#scan');if(el)el.remove();
 }
 function scanCount(){
@@ -60,9 +71,11 @@ async function handleShot(full,sq){
   try{const r=await processShot(full,sq);applyDraftResult(r)}catch(e){toast('Image illisible')}
   return;
  }
- SCAN.n++;SCAN.pending++;BATCH.total++;scanCount();addStrip(sq);
- try{const r=await processShot(full,sq);BATCH.items.push(resultToBatch(r))}catch(e){}
- SCAN.pending--;BATCH.done++;
+ const scan=SCAN,batch=BATCH; // l'analyse attend son tour : la rafale ne lance plus tout en même temps
+ scan.n++;scan.pending++;batch.total++;scanCount();addStrip(sq);scanHint();
+ try{const r=await processShot(full,sq);batch.items.push(resultToBatch(r))}catch(e){}
+ scan.pending--;batch.done++;scanHint();
+ if(BATCH!==batch)return; // rafale annulée entre-temps
  if(!$('#scan')&&VIEW==='ajout'){BATCH.busy=SCAN.pending>0;render()}
 }
 // prise de vue : le carré affiché à l'écran est converti en coordonnées de l'image vidéo

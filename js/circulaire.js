@@ -1,4 +1,4 @@
-// Dress Up — Lot 3 : seconde vie (vendre, donner, déposer, réparer, transformer, échanger, prêter), entretien
+// Dress Up — Seconde vie : vendre, donner, déposer, réparer, transformer, échanger, prêter ; entretien
 "use strict";
 
 const ETATS=['Neuf avec étiquette','Très bon état','Bon état','Satisfaisant'];
