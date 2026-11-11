@@ -48,8 +48,9 @@ function avoidedCo2(){
 const myCo2=i=>{const c=co2Of(i).kg;return isSecondHand(i)?c*(1-FAB_SHARE):c};
 
 /* ---------- équivalences parlantes (Impact CO2 / ADEME) ---------- */
-const INTERESTS={avion:'Voyages en avion',train:'Train',cuisine:'Cuisine',tech:'Tech',voiture:'Voiture'};
+const INTERESTS={vetements:'Vêtements neufs',avion:'Voyages en avion',train:'Train',cuisine:'Cuisine',tech:'Tech',voiture:'Voiture'};
 const EQ={
+ vetements:{per:6.43,f:n=>n*6.43>=50?`${fmtN(n*6.43/25.1)} jean${n*6.43>=37?'s':''} neuf${n*6.43>=37?'s':''}`:`${fmtN(n)} t-shirt${n>=1.5?'s':''} en coton neuf${n>=1.5?'s':''}`}, // t-shirt 6,43 kg · jean 25,1 kg (ADEME)
  voiture:{per:.142,f:n=>`${fmtN(n)} km en voiture`},          // 142 g CO2e / km (voiture thermique moyenne)
  train:{per:.00293,f:n=>`${fmtN(n)} km en TGV`},               // 2,93 g CO2e / km
  avion:{per:.225,f:n=>`${fmtN(n)} km en avion`},               // 22,5 kg / 100 km (trajet court)
@@ -69,7 +70,7 @@ const seedOf=s=>[...String(s)].reduce((a,c)=>a+c.charCodeAt(0),0);
 function co2Card(i){
  const c=co2Of(i),tw=totalWears(i),sh=isSecondHand(i),mine=myCo2(i);
  return `<div class="card"><h3>Empreinte carbone</h3>
- <p><b style="font-size:22px;font-family:var(--head)">~${fmtKg(c.kg)} CO₂e</b> <span class="tiny">${eq(c.kg,seedOf(i.id))}</span></p>
+ <p><b style="font-size:22px;font-family:var(--head)">~${fmtKg(c.kg)} CO₂</b> <span class="tiny">${eq(c.kg,seedOf(i.id))}</span></p>
  <p class="tiny">Moyenne ADEME pour ${c.l}${c.approx?' (valeur la plus proche disponible)':''}, de la fabrication à la fin de vie.${i.madeIn?` Fabriqué en ${esc(i.madeIn)}.`:''}</p>
  ${sh?`<p class="tiny"><b>Acheté d’occasion</b> : jusqu’à ~${fmtKg(c.kg*FAB_SHARE)} de fabrication neuve évités, ${eq(c.kg*FAB_SHARE,seedOf(i.id)+1)} 🌱</p>`:''}
  ${tw?`<p class="tiny">Par port : <b>${fmtKg(mine/tw)}</b>${pastWears(i)===null?' (ports d’avant en construction)':''}. Plus tu le portes, plus ça baisse.</p>`:''}
@@ -80,9 +81,9 @@ function co2Hero(){
  const act=active(),ward=act.reduce((s,i)=>s+myCo2(i),0),avoided=avoidedCo2();
  const gone=S.items.filter(i=>i.removed&&['donne','vendu','recyclerie','transforme','collecte'].includes(i.removed.reason));
  const kgTex=gone.reduce((s,i)=>s+(kgOf(i)||.3),0);
- return `<div class="hero-co2"><p class="hc-k">🌱 CO₂e évités, au mieux</p><p class="hc-big">${fmtKg(avoided)}</p>
-  ${avoided>=1?`<p class="hc-eq">C’est jusqu’à ${eq(avoided,7).replace('≈ ','')}</p>`:`<p class="hc-eq">Seconde main, envies passées, dons : chaque geste compte ici.</p>`}
-  <div class="hc-row"><div><b>${fmtKg(ward)}</b><span>empreinte de ta penderie</span></div><div><b>${fmtKg(kgTex)}</b><span>de vêtements avec une seconde vie</span></div></div></div>`;
+ return `<div class="hero-co2"><button class="hc-main" data-a="statInfo" data-v="evites"><p class="hc-k">🌱 CO₂ évités, au mieux <span class="more">›</span></p><p class="hc-big">${fmtKg(avoided)}</p>
+  ${avoided>=1?`<p class="hc-eq">C’est jusqu’à ${eq(avoided,7).replace('≈ ','')}</p>`:`<p class="hc-eq">Seconde main, envies passées, dons : chaque geste compte ici.</p>`}</button>
+  <div class="hc-row"><button data-a="statInfo" data-v="empreinte"><b>${fmtKg(ward)} <span class="more">›</span></b><span>empreinte de ta penderie</span></button><button data-a="statInfo" data-v="secondevie"><b>${fmtKg(kgTex)} <span class="more">›</span></b><span>de vêtements avec une seconde vie</span></button></div></div>`;
 }
 function co2Bilan(){
  const act=active(),gone=S.items.filter(i=>i.removed);
@@ -94,6 +95,45 @@ function co2Bilan(){
  const wears=act.reduce((s,i)=>s+totalWears(i),0);
  return `${resale?`<div class="stats" style="margin-top:12px"><div class="stat"><b>${eur(resale)}</b><span>récupérés en revendant</span></div></div>`:''}
   <div style="margin-top:10px">
-  ${wears>=act.length*3&&wears>=20?`<p class="tiny">En moyenne, chaque port de ta penderie pèse ${fmtKg(ward/wears)} CO₂e. Porter plus longtemps fait baisser ce chiffre.</p>`:''}
+  ${wears>=act.length*3&&wears>=20?`<p class="tiny">En moyenne, chaque port de ta penderie pèse ${fmtKg(ward/wears)} CO₂. Porter plus longtemps fait baisser ce chiffre.</p>`:''}
   <p class="tiny">Ordres de grandeur ADEME, en moyenne par type de vêtement.</p></div>`;
+}
+
+/* ---------- Bilan : le détail derrière chaque chiffre ---------- */
+function statSheet(v){
+ const act=active(),li=(arr,f)=>arr.length?`<div class="dlist">${arr.map(f).join('')}</div>`:'',
+  row=(i,r)=>`<button class="drow" data-a="open" data-id="${i.id}">${thumb(i)}<span>${esc(i.name)}</span><b>${r}</b></button>`,
+  bar=(l,n,max,r)=>`<div class="dbar"><span>${l}</span><div class="bar"><i style="width:${max?n/max*100:0}%"></i></div><b>${r}</b></div>`;
+ const byCat=f=>CATS.map(c=>[c,act.filter(i=>i.cat===c.id)]).filter(x=>x[1].length).map(([c,its])=>[c.plural,f(its),its.length]);
+ let t='',h='';
+ if(v==='evites'){const sh=S.items.filter(isSecondHand),dr=(S.wishes||[]).filter(w=>w.decided&&w.decided.choice==='renonce'),tot=avoidedCo2();
+  t='CO₂ évités';
+  h=`<p class="dbig">${fmtKg(tot)}</p><p>${tot>=1?`C’est jusqu’à ${['voiture','vetements','train','cuisine'].map(k=>EQ[k].f(tot/EQ[k].per)).join(', ou ')}.`:'Rien encore : achète d’occasion ou laisse passer une envie, et ce chiffre grimpe.'}</p>
+  <h3>Seconde main · ${fmtKg(sh.reduce((s,i)=>s+co2Of(i).kg*FAB_SHARE,0))}</h3>${li(sh,i=>row(i,fmtKg(co2Of(i).kg*FAB_SHARE)))||'<p class="tiny">Aucun vêtement d’occasion pour l’instant.</p>'}
+  <h3>Envies passées · ${fmtKg(dr.reduce((s,w)=>s+co2Of(w).kg,0))}</h3>${dr.length?`<div class="dlist">${dr.map(w=>`<div class="drow">${wishThumb(w)}<span>${esc(w.name)}</span><b>${fmtKg(co2Of(w).kg)}</b></div>`).join('')}</div>`:'<p class="tiny">Aucune envie abandonnée pour l’instant.</p>'}
+  <p class="tiny">« Au mieux » : on suppose que, sans ce geste, tu aurais acheté neuf. Un vêtement d’occasion évite la fabrication (~85 % de son empreinte).</p>`}
+ if(v==='empreinte'){const tot=act.reduce((s,i)=>s+myCo2(i),0),cats=byCat(its=>its.reduce((s,i)=>s+myCo2(i),0)).sort((a,b)=>b[1]-a[1]),mx=cats.length?cats[0][1]:0,top=[...act].sort((a,b)=>myCo2(b)-myCo2(a)).slice(0,5),w=act.reduce((s,i)=>s+totalWears(i),0);
+  t='Empreinte de ta penderie';
+  h=`<p class="dbig">${fmtKg(tot)}</p><p>Le CO₂ émis pour fabriquer, transporter et un jour jeter tes ${act.length} vêtements. ${tot>=1?`C’est ${eq(tot,3).replace('≈ ','environ ')}.`:''}</p>
+  <h3>Par catégorie</h3>${cats.map(([l,kg])=>bar(l,kg,mx,fmtKg(kg))).join('')}
+  <h3>Ceux qui pèsent le plus</h3>${li(top,i=>row(i,fmtKg(myCo2(i))))}
+  ${w?`<div class="dtip">Chaque port pèse en moyenne <b>${fmtKg(tot/w)}</b>. Plus tu portes tes vêtements, plus ce chiffre baisse : c’est le geste le plus efficace.</div>`:''}
+  <p class="tiny">Moyennes ADEME par type de vêtement. En seconde main, on ne compte que 15 % (la fabrication est déjà faite).</p>`}
+ if(v==='secondevie'){const g=S.items.filter(i=>i.removed&&['donne','vendu','recyclerie','transforme','collecte'].includes(i.removed.reason));
+  t='Seconde vie';
+  h=`<p class="dbig">${fmtKg(g.reduce((s,i)=>s+(kgOf(i)||.3),0))}</p><p>Le poids des vêtements que tu as donnés, vendus, déposés ou transformés au lieu de les jeter.</p>
+  ${li(g,i=>`<div class="drow">${thumb(i)}<span>${esc(i.name)}<br><small>${(REASONS.find(r=>r[0]===i.removed.reason)||['',''])[1]}</small></span><b>${fmtKg(kgOf(i)||.3)}</b></div>`)||'<p class="tiny">Rien pour l’instant. Depuis une fiche : « ♻︎ Seconde vie ».</p>'}`}
+ if(v==='pieces'){const cats=byCat(its=>its.length),mx=Math.max(0,...cats.map(c=>c[1])),st=act.filter(stored).length;
+  t='Ta penderie';
+  h=`<p class="dbig">${act.length} pièces</p>${cats.map(([l,n])=>bar(l,n,mx,n)).join('')}${st?`<p class="tiny">Dont ${st} rangée${st>1?'s':''} pour la saison.</p>`:''}`}
+ if(v==='ports'){const w=act.reduce((s,i)=>s+totalWears(i),0),top=[...act].sort((a,b)=>totalWears(b)-totalWears(a)).slice(0,5),low=[...act].filter(i=>!stored(i)).sort((a,b)=>totalWears(a)-totalWears(b)).slice(0,5);
+  t='Tes ports';
+  h=`<p class="dbig">${w} ports</p><p>Chaque fois que tu enregistres une tenue, chaque pièce compte un port.</p><h3>Tes chouchous</h3>${li(top,i=>row(i,portsLabel(i)))}<h3>Les moins portés</h3>${li(low,i=>row(i,portsLabel(i)))}`}
+ if(v==='moyenne'){const w=act.reduce((s,i)=>s+totalWears(i),0),avg=act.length?w/act.length:0,buck=[['0',i=>totalWears(i)===0],['1 à 9',i=>totalWears(i)>0&&totalWears(i)<10],['10 à 29',i=>totalWears(i)>=10&&totalWears(i)<30],['30 et +',i=>totalWears(i)>=30]].map(([l,f])=>[l,act.filter(f).length]),mx=Math.max(0,...buck.map(b=>b[1]));
+  t='Ports par pièce';
+  h=`<p class="dbig">${avg.toFixed(1).replace('.',',')}</p><p>En moyenne, chaque pièce a été portée ${avg.toFixed(1).replace('.',',')} fois. L’objectif : 30 ports au moins par vêtement.</p><h3>Répartition</h3>${buck.map(([l,n])=>bar(l+' ports',n,mx,n)).join('')}`}
+ if(v==='secondemain'){const sh=act.filter(isSecondHand);
+  t='Seconde main';
+  h=`<p class="dbig">${act.length?Math.round(sh.length/act.length*100):0} %</p><p>${sh.length} pièce${sh.length>1?'s':''} sur ${act.length} achetée${sh.length>1?'s':''} d’occasion. Indique l’origine dans chaque fiche pour que ce chiffre soit juste.</p>${li(sh,i=>row(i,fmtKg(co2Of(i).kg*FAB_SHARE)+' évités'))}`}
+ sheet(`<h2 style="margin-top:0">${t}</h2>${h}`);
 }

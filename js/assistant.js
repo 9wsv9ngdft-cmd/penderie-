@@ -3,7 +3,7 @@
 
 const TONES={complice:'Complice et taquin',doux:'Doux et bienveillant',sobre:'Sobre et efficace',pep:'Plein d’énergie'};
 const bot=()=>S.bot||(S.bot={name:'',tone:'complice',budget:null,fb:{up:0,down:0,streak:0}});
-const botName=()=>bot().name||'ton assistant';
+const botName=()=>bot().name||'ReLook';
 const pickR=a=>a[Math.floor(Math.random()*a.length)];
 const T=(o)=>{const v=o[bot().tone]||o.complice;return Array.isArray(v)?pickR(v):v};
 const SAMPLE={complice:'Encore un pull gris ? Tu en as déjà 4… 😏',doux:'Tu as déjà de jolis pulls, peut-être que l’un d’eux ferait l’affaire ?',sobre:'Tu possèdes déjà 4 pulls gris.',pep:'Attends attends : 4 pulls gris déjà ! On fouille d’abord ta penderie ? 🙌'};
@@ -68,10 +68,10 @@ function replyAchat(d,text){
  if(pf.goal==='moins'||pf.goal==='place')L.push(T({complice:'Et je te rappelle ton objectif : '+(pf.goal==='moins'?'acheter moins':'faire de la place')+' 😉',doux:'Pense à ton objectif : '+(pf.goal==='moins'?'acheter moins':'faire de la place')+'.',sobre:'Objectif : '+(pf.goal==='moins'?'acheter moins':'faire de la place')+'.',pep:'Ton objectif, c’est '+(pf.goal==='moins'?'acheter moins':'faire de la place')+' ! 💪'}));
  if(pf.goal==='eco'&&d.price>0)L.push(`En seconde main, ce serait souvent 2 à 3 fois moins cher.`);
  const bl=budgetLine(d.price);if(bl)L.push(bl);
- const co=co2Of({cat:d.cat,name:what});L.push(`🌱 En seconde main, tu éviterais jusqu’à ~${fmtKg(co.kg*FAB_SHARE)} CO₂e (${eq(co.kg*FAB_SHARE,seedOf(what))}).`);
+ const co=co2Of({cat:d.cat,name:what});L.push(`🌱 En seconde main, tu éviterais jusqu’à ~${fmtKg(co.kg*FAB_SHARE)} CO₂ (${eq(co.kg*FAB_SHARE,seedOf(what))}).`);
  L.push(T({complice:'Je te le note dans tes envies et on en reparle dans 5 jours ?',doux:'On le note dans tes envies, et tu décides dans 5 jours ?',sobre:'Proposition : l’ajouter aux envies (5 jours de réflexion).',pep:'Je le mets dans tes envies ? Rendez-vous dans 5 jours !'}));
  const name=(what[0].toUpperCase()+what.slice(1))+(d.col?' '+d.col:'');
- return{t:L.join('<br>'),acts:[['Noter l’envie','botWish',{n:name,c:d.cat,col:d.col||'',p:d.price||''}],['Chercher en seconde main','link',{href:`https://www.vinted.fr/catalog?search_text=${encodeURIComponent(name)}`}],['Laisse tomber 👍','botDrop',{}]]};
+ return{t:L.join('<br>'),acts:[['On en reparle dans 5 jours','botWish',{n:name,c:d.cat,col:d.col||'',p:d.price||''}],['Chercher en seconde main','link',{href:`https://www.vinted.fr/catalog?search_text=${encodeURIComponent(name)}`}],['Laisse tomber 👍','botDrop',{}]]};
 }
 function gaps(){
  const a=inUse(),g=[];const cnt=c=>a.filter(i=>i.cat===c).length;
@@ -107,7 +107,7 @@ function reply(text){
   case 'lessive':{const g=laundry(),f=fullGroups();const parts=Object.entries(WASH).filter(([k])=>g[k].items.length).map(([k,l])=>`${l.toLowerCase()} ${Math.round(Math.min(100,g[k].kg/(capKg()*FULL)*100))} %`);
    return{t:(f.length?`Machine pleine : ${f.map(k=>WASH[k].toLowerCase()).join(', ')} ! `:parts.length?`Panier : ${parts.join(', ')}. Pas encore de quoi faire une machine pleine. `:'Rien au sale. ')+(poolTot()||uTot('chaussettes')?`Dessous propres : ${uClean('chaussettes')} paires de chaussettes, ${poolClean()} culottes/boxers/slips.`:'')}}
   case 'bilan':{const av=avoidedCo2(),rep=(S.stats||{}).repairs||0;
-   return{t:open+`Grâce à toi : jusqu’à ${fmtKg(av)} CO₂e évités (${eq(av,3)}), ${rep?`${rep} réparation${rep>1?'s':''}, `:''}${Object.keys(S.badges||{}).length} badge${Object.keys(S.badges||{}).length>1?'s':''}.`,acts:[['Voir le bilan','go',{v:'bilan'}]]}}
+   return{t:open+`Grâce à toi : jusqu’à ${fmtKg(av)} CO₂ évités (${eq(av,3)}), ${rep?`${rep} réparation${rep>1?'s':''}, `:''}${Object.keys(S.badges||{}).length} badge${Object.keys(S.badges||{}).length>1?'s':''}.`,acts:[['Voir le bilan','go',{v:'bilan'}]]}}
  }
  return{t:T({complice:'Je ne suis pas sûr de te suivre 🤔 Tu voulais parler de…',doux:'Je ne suis pas sûr de comprendre. Tu voulais parler de…',sobre:'Pas compris. Sujet ?',pep:'Oups, je n’ai pas tout capté ! C’était à propos de…'}),acts:quick()};
 }
@@ -133,22 +133,27 @@ function prefLine(){const p=prefs(),bits=[];
 function chatSheet(){
  S.chatUnread=false;save();botBadge();
  if(!chat().length)msgPush({from:'bot',t:`${T({complice:'Salut ! Moi c’est',doux:'Bonjour, je suis',sobre:'Je suis',pep:'Hello ! Moi c’est'})} ${esc(botName())}. ${T({complice:'Je connais ta penderie par cœur (et tes petites faiblesses 😏).',doux:'Je connais ta penderie et je suis là pour t’aider à faire de bons choix.',sobre:'Je connais ta penderie et ton budget.',pep:'Je connais ta penderie et on va faire des merveilles ensemble ! ✨'})} ${prefLine()}Écris-moi ou utilise le micro du clavier.`,acts:quick()});
- const last=chat()[chat().length-1];
- sheet(`<div class="row between" style="margin-bottom:6px"><h2 style="margin:0">💬 ${bot().name?esc(bot().name):'Ton personal shopper'}</h2><span class="tiny">reste sur ton téléphone</span></div>
- <div id="chatLog">${chat().map(m=>`<div class="msg ${m.from}">${m.t}${m.from==='bot'&&m.acts&&m.acts.length&&m===last?`<div class="chips" style="margin-top:8px">${m.acts.map(actBtn).join('')}</div>`:''}
-  ${m.from==='bot'&&m!==chat()[0]?`<div class="fb">${m.fb?(m.fb>0?'👍':'👎'):`<button data-a="botFb" data-id="${m.id}" data-v="1" aria-label="Bonne réponse">👍</button><button data-a="botFb" data-id="${m.id}" data-v="-1" aria-label="Réponse à côté">👎</button>`}</div>`:''}</div>`).join('')}</div>
- <form class="row chatbar" data-f="chat" style="flex-wrap:nowrap"><input type="text" name="q" placeholder="Écris ou dicte avec 🎤" autocomplete="off"><button class="btn sm">Envoyer</button></form>`);
- const c=$('.sheet-card');if(c)c.scrollTop=c.scrollHeight;
+ const last=chat()[chat().length-1],ava=`<span class="ava" aria-hidden="true">${BOT_SVG}</span>`;
+ sheet(`<div class="chat-head">${ava.replace('ava','ava big')}<div><h2>${esc(botName())}</h2><span class="online">en ligne · reste sur ton téléphone</span></div></div>
+ <div id="chatLog">${chat().map(m=>m.from==='bot'?`<div class="mrow-bot">${ava}<div class="msg bot">${m.t}
+  ${m!==chat()[0]?`<div class="fb">${m.fb?(m.fb>0?'👍':'👎'):`<button data-a="botFb" data-id="${m.id}" data-v="1" aria-label="Bonne réponse">👍</button><button data-a="botFb" data-id="${m.id}" data-v="-1" aria-label="Réponse à côté">👎</button>`}</div>`:''}</div></div>`:`<div class="msg me">${m.t}</div>`).join('')}
+  ${TYPING?`<div class="mrow-bot">${ava}<div class="msg bot typing"><i></i><i></i><i></i></div></div>`:''}</div>
+ <div class="chatbar">${!TYPING&&last.from==='bot'&&last.acts&&last.acts.length?`<div class="chat-chips">${last.acts.map(actBtn).join('')}</div>`:''}
+ <form class="row" data-f="chat" style="flex-wrap:nowrap"><input type="text" name="q" placeholder="Écris ou dicte avec 🎤" autocomplete="off"><button class="btn sm" aria-label="Envoyer">➤</button></form></div>`);
+ const c=$('.sheet-card');if(c){c.classList.add('full','chat');c.scrollTop=c.scrollHeight}
 }
+let TYPING=false;
+const BOT_SVG='<svg viewBox="0 0 24 24"><path d="M10 3.8a2 2 0 1 1 2 2v1.8"/><path d="M4 12.5 12 7.6l8 4.9"/><path d="M12 7.6V15l-3 6M12 15l3 6"/></svg>';
 function botSay(text){
  msgPush({from:'me',t:esc(text)});
- const r=reply(text);msgPush({from:'bot',t:r.t,acts:r.acts||[]});chatSheet();
+ const r=reply(text);TYPING=true;chatSheet();
+ setTimeout(()=>{TYPING=false;msgPush({from:'bot',t:r.t,acts:r.acts||[]});if(!$('#sheet').hidden&&$('#chatLog'))chatSheet()},700);
 }
 document.addEventListener('submit',e=>{const f=e.target.closest('form[data-f=chat]');if(!f)return;e.preventDefault();const v=f.q.value.trim();if(v)botSay(v)});
 
 /* ---------- réglages de l'assistant (accueil + Réglages) ---------- */
 function botSettings(inOnb){
- return `${inOnb?'':'<p class="label" style="margin-top:0">Ton assistant</p>'}<input type="text" id="botName" value="${esc(bot().name)}" placeholder="Son nom (ex. Fripe, Léon…)" autocomplete="off">
+ return `${inOnb?'':'<p class="label" style="margin-top:0">Son nom</p>'}<input type="text" id="botName" value="${esc(bot().name)}" placeholder="ReLook, ou le nom que tu veux" autocomplete="off">
  <p class="label">Son caractère</p><div class="chips">${Object.entries(TONES).map(([k,l])=>`<button class="chip ${bot().tone===k?'on':''}" data-a="botTone" data-v="${k}" ${inOnb?'data-onb="1"':''}>${l}</button>`).join('')}</div>
  <p class="tiny" style="margin-top:8px">« ${SAMPLE[bot().tone]} »</p>
  <p class="label">Budget vêtements par mois <span style="text-transform:none;font-weight:400">(facultatif)</span></p><div class="row" style="flex-wrap:nowrap"><input type="text" inputmode="decimal" id="botBudget" value="${bot().budget||''}" placeholder="ex. 50" style="max-width:140px"><span class="muted">€</span></div>`;

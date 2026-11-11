@@ -30,6 +30,9 @@ const A={
   if(S.trip)S.trip.list=S.trip.list.filter(x=>x.id!==id);S.plan=null;
   photos.delete(id);DB.del('photo:'+id);DB.del('orig:'+id);ORIG.delete(id);squares.delete(id);DB.del('sq:'+id);OUTS=null;save();closeSheet();render()},
  menuOpen(){menuSheet()},
+ statInfo(el){statSheet(el.dataset.v)},
+ matinMove(el){const o=matinOrder(),i=o.indexOf(el.dataset.v),j=i+(+el.dataset.d);if(j<0||j>=o.length)return;[o[i],o[j]]=[o[j],o[i]];S.matin={...(S.matin||{}),order:o};save();render()},
+ matinHide(el){const m=S.matin||(S.matin={}),h=new Set(m.hide||[]),k=el.dataset.v;h.has(k)?h.delete(k):h.add(k);m.hide=[...h];save();render()},
  toolsOpen(){toolsSheet()},
  washOpen(el){washSheet(el&&el.dataset.v)},
  fStored(){F.stored=!F.stored;render()},
@@ -160,7 +163,7 @@ function cleanState(raw){
  const s=cs.obj(raw),seen=new Set();
  const items=cs.arr(s.items).map(cleanItem).filter(i=>i&&!seen.has(i.id)&&seen.add(i.id));
  const kid=v=>cs.arr(v).map(cs.id).filter(x=>x&&seen.has(x));
- const o={v:1,items,pins:kid(s.pins),city:null,wx:null,manual:null,undo:null,onboarded:!!s.onboarded||items.length>0,seenVer:cs.int(s.seenVer)||0,
+ const o={v:1,items,pins:kid(s.pins),city:null,wx:null,manual:null,undo:null,onboarded:!!s.onboarded||items.length>0,seenVer:cs.int(s.seenVer)||0,matin:(()=>{const m=cs.obj(s.matin);return{order:cs.keys(m.order,MATIN),hide:cs.keys(m.hide,MATIN)}})(),
   log:cs.arr(s.log).map(l=>{l=cs.obj(l);const d=cs.date(l.date);return d?{date:d,ids:kid(l.ids),occ:cs.key(l.occ,OCCS)||'quotidien'}:null}).filter(Boolean)};
  const put=(k,v)=>{if(v!==null&&v!==undefined)o[k]=v};
  const c=cs.obj(s.city),lat=cs.num(c.lat,-90,90),lon=cs.num(c.lon,-180,180);if(cs.str(c.name,60).trim()&&lat!==null&&lon!==null)o.city={name:cs.str(c.name,60).trim(),lat,lon};

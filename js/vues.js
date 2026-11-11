@@ -51,8 +51,22 @@ function vMatin(){
  let h=`<p class="eyebrow"><b style="color:var(--moss)">Dress Up</b> · ${d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</p><h1>${greet()}</h1>`;
  if(!active().length)return h+`<div class="card empty"><div class="serif">Ta penderie est vide</div><p class="muted">Commence par photographier quelques vêtements : un haut, un bas, des chaussures suffisent pour une première tenue.</p><a class="btn" href="#ajout">Ajouter un vêtement</a></div>`;
  const w=effWeather();
- h+=weatherCard(w);
- h+=safetyNotice()+seasonNotice()+laundryNotice()+eveNotice()+wishNotice()+circularNotice()+photoOfDay();
+ const B={meteo:()=>weatherCard(w),alertes:()=>safetyNotice()+seasonNotice()+laundryNotice()+eveNotice()+wishNotice()+circularNotice(),tenue:()=>tenueBlock(w),semaine:()=>weekStrip(),photo:()=>photoOfDay()};
+ for(const k of matinOrder())if(!matinHidden(k))h+=B[k]();
+ return h;
+}
+const MATIN={meteo:['☀️ Météo',0],alertes:['🔔 Petits rappels',1],tenue:['👕 On met quoi aujourd’hui',0],semaine:['📅 Ta semaine',1],photo:['📷 Photo du jour',1]};
+function matinOrder(){const o=((S.matin||{}).order||[]).filter(k=>MATIN[k]);Object.keys(MATIN).forEach(k=>{if(!o.includes(k))o.push(k)});return o}
+const matinHidden=k=>MATIN[k][1]&&((S.matin||{}).hide||[]).includes(k);
+function weekStrip(){
+ const pl=S.plan&&S.plan.days?S.plan.days:[],out=[];
+ for(let k=1;k<=6;k++){const d=now();d.setDate(d.getDate()+k);const key=todayKey(d),p=pl.find(x=>x.date===key),wd=d.getDay(),t=agenda()[wd]||'quotidien';
+  const its=p?p.ids.map(item).filter(Boolean).slice(0,3):[];
+  out.push(`<button class="wday" data-a="weekOpen"><b>${DAYS[wd]} ${d.getDate()}</b><span>${{quotidien:'Libre',boulot:'Boulot',sport:'Sport',soiree:'Soirée'}[t]||'Libre'}</span>${p?`<span class="tiny">${BANDS[p.b].l}${p.rain?' ☂':''}</span>`:''}<div class="wthumbs">${its.map(i=>thumb(i)).join('')}</div></button>`)}
+ return `<div class="row between" style="margin-top:22px;align-items:baseline"><h3 style="margin:0">Ta semaine</h3><button class="btn sm ghost" data-a="weekOpen">${pl.length?'Voir':'Préparer'}</button></div><div class="wstrip">${out.join('')}</div>`;
+}
+function tenueBlock(w){
+ let h='';
  const todayLog=S.log.find(l=>l.date===todayKey());
  if(todayLog){
   const its=todayLog.ids.map(item).filter(Boolean),act=active(),m=todayKey().slice(0,7),worn=act.filter(i=>i.lastWorn&&i.lastWorn.slice(0,7)===m).length;
@@ -67,11 +81,11 @@ function vMatin(){
   return h;
  }
  h+=yesterdayCard();
- if(!w)return h+`<p class="muted" style="margin-top:20px">Indique la météo pour recevoir des idées de tenues.</p>`;
+ if(!w)return h+`<h2 style="margin-top:26px">On met quoi aujourd’hui ?</h2><p class="muted">Indique la météo pour recevoir des idées de tenues.</p>`;
  if(!OUTS){OUTS=genOutfits(w);const pt=plannedToday();if(pt)OUTS=[pt,...OUTS.filter(o=>favKey(o)!==favKey(pt))].slice(0,3);OIDX=0}
  if(!OUTS.length)return h+`<div class="card"><p>Rien de propre à proposer… C’est peut-être le jour de la lessive ?</p><a class="btn sm" href="#penderie">Voir la penderie</a></div>`;
  const tip={froid:'Superpose : trois couches fines tiennent plus chaud qu’une épaisse.',frais:'Prévois une couche que tu peux enlever à midi.',doux:'Une petite maille suffira.',chaud:'Matières légères et respirantes.'}[w.band];
- h+=`<div class="row between" style="margin-top:26px"><h2 style="margin:0">Idées du jour</h2><button class="btn sm ghost" data-a="weekOpen">Ma semaine</button></div><div class="spacer"></div>${occChips()}${moodChips()}`;
+ h+=`<h2 style="margin-top:26px">On met quoi aujourd’hui ?</h2>${occChips()}${moodChips()}`;
  // une tenue à la fois, comme une carte : ✕ passe à la suivante, « Je porte ça » l'enregistre
  OIDX=Math.min(OIDX,OUTS.length-1);const k=OIDX,o=OUTS[k],its=o.map(item).filter(Boolean),cats=its.map(i=>i.cat),miss=[];
  if(!cats.includes('robe')&&!cats.includes('bas'))miss.push('bas');
@@ -181,10 +195,10 @@ function vBilan(){
  const second=gone.filter(i=>['donne','vendu','recyclerie','transforme'].includes(i.removed.reason)).length;
  let h=`<p class="eyebrow">Ton empreinte</p><h1>Bilan</h1>${co2Hero()}${co2Bilan()}
  <h2>Ta penderie</h2><div class="stats">
-  <div class="stat"><b>${act.length}</b><span>pièces dans la penderie</span></div>
-  <div class="stat"><b>${wears}</b><span>ports enregistrés</span></div>
-  <div class="stat"><b>${avg.toFixed(1).replace(".",",")}</b><span>ports en moyenne par pièce</span></div>
-  <div class="stat"><b>${act.length?Math.round(sh/act.length*100):0}%</b><span>de seconde main</span></div>
+  <button class="stat" data-a="statInfo" data-v="pieces"><b>${act.length}</b><span>pièces dans la penderie</span><i class="more">›</i></button>
+  <button class="stat" data-a="statInfo" data-v="ports"><b>${wears}</b><span>ports enregistrés</span><i class="more">›</i></button>
+  <button class="stat" data-a="statInfo" data-v="moyenne"><b>${avg.toFixed(1).replace(".",",")}</b><span>ports en moyenne par pièce</span><i class="more">›</i></button>
+  <button class="stat" data-a="statInfo" data-v="secondemain"><b>${act.length?Math.round(sh/act.length*100):0}%</b><span>de seconde main</span><i class="more">›</i></button>
  </div>
  <h2>Objectif 30 ports</h2><div class="card"><p>${thirty} pièce${thirty>1?'s':''} sur ${act.length} ont atteint 30 ports.</p><div class="bar"><i style="width:${act.length?thirty/act.length*100:0}%"></i></div><p class="tiny">Porter un vêtement plus longtemps est le geste qui réduit le plus son impact : l’essentiel de l’empreinte vient de la fabrication.</p></div>`;
  h+=`<h2>Défis</h2>`+chalCards()+badgesBilan();
@@ -211,7 +225,11 @@ function vReglages(){
  let h=`<p class="eyebrow">Dress Up</p><h1>Réglages</h1>`;
  if(IN_PREVIEW)h+=`<div class="notice">Tu es dans l’<b>aperçu</b> : les données restent dans ce navigateur, mais la météo auto et l’export de sauvegarde sont désactivés. Pour la vraie app, installe la version complète (voir mon message).</div>`;
  h+=`<h2>Photos</h2>${aiCards()}`;
- h+=`<h2>Mon assistant</h2><div class="card">${botSettings(false)}<div class="spacer"></div><button class="btn sm" data-a="botSave">Enregistrer</button></div>
+ const mo=matinOrder();
+ h+=`<h2>Écran Ce matin</h2><div class="card"><p class="tiny" style="margin-top:0">Range les blocs dans l’ordre que tu veux, et cache ceux qui ne te servent pas.</p>${mo.map((k,n)=>`<div class="mrow"><span class="mlab ${matinHidden(k)?'off':''}">${MATIN[k][0]}</span>
+  <button class="mbtn" data-a="matinMove" data-v="${k}" data-d="-1" ${n?'':'disabled'} aria-label="Monter">↑</button><button class="mbtn" data-a="matinMove" data-v="${k}" data-d="1" ${n<mo.length-1?'':'disabled'} aria-label="Descendre">↓</button>
+  ${MATIN[k][1]?`<button class="mbtn" data-a="matinHide" data-v="${k}" aria-label="${matinHidden(k)?'Afficher':'Cacher'}">${matinHidden(k)?'🙈':'👁'}</button>`:'<span class="mbtn" aria-hidden="true"></span>'}</div>`).join('')}</div>`;
+ h+=`<h2>ReLook, ton personal shopper</h2><div class="card">${botSettings(false)}<div class="spacer"></div><button class="btn sm" data-a="botSave">Enregistrer</button></div>
  <h2>Préférences</h2><div class="card"><p class="label" style="margin-top:0">Saison en cours</p><div class="chips">${['ete','hiver'].map(k=>`<button class="chip ${curSeason()===k?'on':''}" data-a="seasonSwitch" data-v="${k}">${SEASONS[k]}</button>`).join('')}</div>
   <p class="label">Ce qui te parle (pour les équivalences CO₂)</p><div class="chips">${Object.entries(INTERESTS).map(([k,l])=>`<button class="chip ${(S.interests||[]).includes(k)?'on':''}" data-a="interest" data-v="${k}">${l}</button>`).join('')}</div>
   <p class="label">Ta machine à laver</p><div class="chips">${[5,6,7,8,9,10].map(k=>`<button class="chip ${capKg()===k?'on':''}" data-a="setKg" data-v="${k}">${k} kg</button>`).join('')}</div></div>
@@ -245,6 +263,7 @@ function menuSheet(){
  ${o('sessionOpen','🧵 Session réparation','')}
  ${o('favsOpen','♥ Tenues favorites','')}
  ${o('lookbookOpen','📸 Lookbook','Tes tenues en photo miroir')}
+ ${o('onbOpen','🎬 Rejouer l’intro','La visite de l’app et tes réponses')}
  ${o('go','⚙️ Réglages','Photos, assistant, ville, machine, saison, sauvegarde','data-v="reglages"')}`);
 }
 

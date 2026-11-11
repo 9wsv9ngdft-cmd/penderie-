@@ -56,21 +56,21 @@ function wishCard(w){
 }
 let WD=null;
 function wishPick(){
- sheet(`<h2 style="margin-top:0">Une envie ?</h2><p class="tiny">Prends-la en photo : en vitrine, sur quelqu’un, ou une capture d’écran d’un site. Dans ${WISH_DAYS} jours, tu la revois et tu décides.</p>
+ sheet(`<h2 style="margin-top:0">Je craque ou pas ?</h2><p class="tiny">Prends-la en photo : en vitrine, sur quelqu’un, ou une capture d’écran d’un site. Dans ${WISH_DAYS} jours, tu la revois et tu décides.</p>
  <label class="btn block" style="margin-top:8px">📷 Prendre en photo<input type="file" accept="image/*" capture="environment" id="wpic" hidden></label><div class="spacer"></div>
  <label class="btn ghost block">🖼️ Une photo ou une capture d’écran<input type="file" accept="image/*" id="wpic2" hidden></label><div class="spacer"></div>
  <button class="btn sm ghost block" data-a="wishNoPic">✍️ Sans photo, je la décris</button>`);
 }
 function wishSheet(){
  if(!WD)WD={name:'',cat:'haut',color:'noir',price:null,ref:'',photo:null};
- sheet(`<h2 style="margin-top:0">Noter une envie</h2><p class="tiny">Tu la retrouveras dans ${WISH_DAYS} jours. Souvent, l’envie passe toute seule.</p>
+ sheet(`<h2 style="margin-top:0">Je craque ou pas ?</h2><p class="tiny">On en reparle dans ${WISH_DAYS} jours. Souvent, l’envie passe toute seule.</p>
  <label class="photo-drop" style="padding:10px">${WD.photo?`<div class="ph" style="background-image:url('${U(WD.photo)}');max-width:220px;margin:0 auto"></div>`:''}${WD.guessing?'<p class="tiny" style="margin:8px 0 0;color:var(--moss);font-weight:600">🔍 Je regarde ce que c’est…</p>':''}<input type="file" accept="image/*" id="wpic"><span class="btn sm soft" style="margin-top:${WD.photo?8:0}px">${WD.photo?'Changer l’image':'Ajouter une image (facultatif)'}</span></label>
  <p class="label">Quoi ?</p><input type="text" id="wnm" value="${esc(WD.name)}" placeholder="ex. Pull en laine vert" autocomplete="off">
  <p class="label">Catégorie</p><div class="chips">${CATS.map(c=>`<button class="chip ${WD.cat===c.id?'on':''}" data-a="wd" data-k="cat" data-v="${c.id}">${c.label}</button>`).join('')}</div>
  <p class="label">Couleur</p><div class="chips">${COLORS.map(([n,v])=>`<button class="chip ${WD.color===n?'on':''}" data-a="wd" data-k="color" data-v="${n}"><span class="dot" style="background:${v}"></span>${n}</button>`).join('')}</div>
  <p class="label">Prix</p><div class="row" style="flex-wrap:nowrap"><input type="text" inputmode="decimal" id="wpr" value="${WD.price>0?String(WD.price).replace('.',','):''}" placeholder="ex. 49" style="max-width:140px"><span class="muted">€</span></div>
  <p class="label">Lien <span style="text-transform:none;font-weight:400">(facultatif)</span></p><input type="text" id="wref" value="${esc(WD.ref)}" placeholder="lien du produit" autocomplete="off">
- <div class="spacer"></div><button class="btn block" data-a="wishSave">Noter</button>`);
+ <div class="spacer"></div><button class="btn block" data-a="wishSave">On en reparle dans ${WISH_DAYS} jours</button>`);
 }
 const keepWish=()=>{if(!WD)return;const n=$('#wnm'),p=$('#wpr'),r=$('#wref');if(n)WD.name=n.value;if(p)WD.price=parsePrice(p.value);if(r)WD.ref=r.value.trim()};
 function wishNotice(){const n=wishes().filter(wishDue).length;return n?`<div class="notice">${n} envie${n>1?'s':''} attend${n>1?'ent':''} ta décision. <a href="#envies">Voir</a></div>`:''}
@@ -121,7 +121,7 @@ function vEnvies(){
  const saved=dropped.reduce((s,w)=>s+(w.price||0),0);
  let h=`<p class="eyebrow">Moins acheter</p><h1>Envies</h1>
  <p class="tiny" style="margin-top:-8px">Une envie d’achat ? Note-la et attends ${WISH_DAYS} jours avant de décider.</p>
- <button class="btn block" data-a="wishNew" style="margin:12px 0 4px">+ Noter une envie</button>`;
+ <button class="btn block" data-a="wishNew" style="margin:12px 0 4px">Je craque ou pas ?</button>`;
  if(dropped.length||bought.length)h+=`<div class="stats" style="margin-top:12px"><div class="stat"><b>${eur(saved)}</b><span>économisés (${dropped.length} envie${dropped.length>1?'s':''} passée${dropped.length>1?'s':''})</span></div><div class="stat"><b>${bought.length}</b><span>achat${bought.length>1?'s':''} réfléchi${bought.length>1?'s':''}</span></div></div>`;
  if(due.length)h+=`<h2>À décider</h2>`+due.map(wishCard).join('');
  if(wait.length)h+=`<h2>En réflexion</h2>`+wait.map(wishCard).join('');

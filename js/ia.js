@@ -172,10 +172,10 @@ setInterval(()=>{
 // petits faits pour patienter pendant le détourage (chiffres ADEME / Impact CO2, relus le 11/11/2026 ; histoire des vêtements)
 const FACTS=[
  'Le mot « jean » viendrait de Gênes, port d’où partait cette toile solide. Et « denim » vient de « serge de Nîmes ».',
- 'Un jean, c’est environ 25 kg de CO₂e sur toute sa vie, dont 92 % pour le fabriquer. Le porter longtemps, c’est le meilleur geste.',
- 'Un t-shirt en coton : environ 6,4 kg de CO₂e, dont plus des trois quarts pour sa fabrication.',
- 'Un manteau, c’est environ 100 kg de CO₂e, autant qu’environ 700 km en voiture. Le garder un hiver de plus, ça compte.',
- 'Un pull en laine pèse environ 57 kg de CO₂e, surtout à cause de la matière première. Bonne nouvelle : la laine s’aère plus qu’elle ne se lave.',
+ 'Un jean, c’est environ 25 kg de CO₂ sur toute sa vie, dont 92 % pour le fabriquer. Le porter longtemps, c’est le meilleur geste.',
+ 'Un t-shirt en coton : environ 6,4 kg de CO₂, dont plus des trois quarts pour sa fabrication.',
+ 'Un manteau, c’est environ 100 kg de CO₂, autant qu’environ 700 km en voiture. Le garder un hiver de plus, ça compte.',
+ 'Un pull en laine pèse environ 57 kg de CO₂, surtout à cause de la matière première. Bonne nouvelle : la laine s’aère plus qu’elle ne se lave.',
  'Acheter d’occasion évite l’essentiel de l’empreinte d’un vêtement : sa fabrication est déjà faite.',
  'Le cardigan doit son nom au comte de Cardigan, officier britannique du XIXᵉ siècle.',
  'Le trench-coat tient son nom des tranchées de la Première Guerre mondiale, où les officiers le portaient.',
