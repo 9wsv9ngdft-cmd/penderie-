@@ -215,7 +215,7 @@ function vReglages(){
   <p class="tiny">Stockage : ${DB.ok?'sur cet appareil (IndexedDB)':'temporaire — sera perdu à la fermeture'}. Tes vêtements et tes photos ne sortent jamais du téléphone.${IN_PREVIEW?'':' Deux choses passent par Internet : le nom de ta ville et sa position arrondie (Open-Meteo, pour la météo), et le téléchargement des modèles de reconnaissance si tu les actives (jsDelivr et Hugging Face).'}</p>
   <div class="row">${IN_PREVIEW?'':`<button class="btn sm soft" data-a="export">Sauvegarder (fichier)</button>`}<label class="btn sm ghost">Restaurer<input type="file" accept="application/json" id="imp" hidden></label></div>
   <label class="toggle" style="margin-top:8px"><span>Inclure mes photos miroir dans la sauvegarde</span><input type="checkbox" id="expLooks" ${S.exportLooks?'checked':''}></label>
-  <div class="spacer"></div><button class="btn sm ghost" data-a="onbOpen">Revoir l’accueil</button></div>
+  <div class="spacer"></div><button class="btn sm ghost" data-a="onbOpen">Revoir l’accueil</button><p class="tiny" style="margin:12px 0 0">Dress Up, version ${APP_VERSION}</p></div>
  <h2>Réinitialiser</h2><div class="card"><p class="tiny">Efface vêtements, photos, envies, défis et réglages de cet appareil. Pense à sauvegarder avant.</p><button class="btn danger block" data-a="wipeAsk">Tout effacer et recommencer</button>
  </div>
  ${IN_PREVIEW?'':`<div class="card"><h3>Raccourci du matin</h3><p class="tiny">App Raccourcis → Automatisation → Heure de la journée (ex. 7 h 30) → action « Ouvrir les URL » :</p><p><code>${esc(location.origin+location.pathname)}#matin</code></p><p class="tiny">Utilise toujours le même navigateur (ou toujours l’icône de l’écran d’accueil) : sur iPhone, les deux ont des stockages séparés.</p></div>`}`;

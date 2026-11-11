@@ -45,5 +45,14 @@ window.addEventListener('hashchange',route);
  const vals=await Promise.all(ks.map(k=>DB.get(k)));
  ks.forEach((k,n)=>{const p=vals[n];if(!p)return;const c=k.indexOf(':'),id=k.slice(c+1),t=k.slice(0,c);(t==='photo'?photos:t==='sq'?squares:lookPhotos).set(id,p)});
  if(ks.length&&VIEW!=='ajout'&&$('#sheet').hidden)render();
- if(!IN_PREVIEW&&'serviceWorker' in navigator){try{navigator.serviceWorker.register('sw.js')}catch(e){}}
+ if(!IN_PREVIEW&&'serviceWorker' in navigator){try{
+  // nouvelle version installée : on recharge pour ne jamais mélanger anciens et nouveaux fichiers,
+  // sauf si tu es en train d'ajouter un vêtement (on te prévient plutôt)
+  const had=!!navigator.serviceWorker.controller;let done=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!had||done)return;done=true;
+   if($('#scan')||DR||BATCH||!$('#sheet').hidden)toast('Nouvelle version prête : ferme et rouvre l’app quand tu as fini');else location.reload()});
+  navigator.serviceWorker.register('sw.js').then(r=>{
+   // au retour dans l'app, on regarde s'il y a du nouveau (une fois par heure au plus)
+   let last=Date.now();document.addEventListener('visibilitychange',()=>{if(!document.hidden&&Date.now()-last>36e5){last=Date.now();r.update().catch(()=>{})}})}).catch(()=>{});
+ }catch(e){}}
 })();
