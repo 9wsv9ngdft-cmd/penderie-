@@ -75,10 +75,12 @@ function wear(ids){
  S.undo={date:t,prev:ids.map(id=>JSON.parse(JSON.stringify(item(id)))),pins:[...S.pins]};
  ids.forEach(id=>{const i=item(id);i.wears=(i.wears||0)+1;i.sinceWash=(i.sinceWash||0)+1;i.lastWorn=t;i.boost=false;
   const m=maxOf(i);i.state=m===0?'propre':(i.sinceWash>=m?'sale':'porte')});
- S.log=S.log.filter(l=>l.date!==t);S.log.push({date:t,ids,occ:todayOcc()});S.pins=[];OUTS=null;save();
+ S.log=S.log.filter(l=>l.date!==t);S.log.push({date:t,ids,occ:todayOcc()});S.pins=[];OUTS=null;
+ if(typeof onWear==='function')onWear(ids);
+ save();
 }
 function undoToday(){
  const t=todayKey();if(!S.undo||S.undo.date!==t)return;
  S.undo.prev.forEach(p=>{const k=S.items.findIndex(i=>i.id===p.id);if(k>=0)S.items[k]=p});
- S.pins=S.undo.pins||[];S.log=S.log.filter(l=>l.date!==t);S.undo=null;OUTS=null;save();
+ S.pins=S.undo.pins||[];if(S.undo.under)S.under=S.undo.under;S.log=S.log.filter(l=>l.date!==t);S.undo=null;OUTS=null;save();
 }

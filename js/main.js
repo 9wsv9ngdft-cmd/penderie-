@@ -4,6 +4,8 @@
 function render(){
  const app=$('#app');app.innerHTML=VIEWS[VIEW]();
  document.querySelectorAll('#tabs a').forEach(a=>a.classList.toggle('on',a.dataset.v===VIEW));
+ if(typeof botBadge==='function')botBadge();
+ if(typeof checkBadges==='function')checkBadges();
 }
 function route(){
  const h=location.hash.slice(1);const v=VIEWS[h]?h:'matin';

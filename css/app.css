@@ -127,3 +127,12 @@ code{background:#ece5d6;padding:1px 6px;border-radius:6px;font-size:13px;word-br
 .fab{position:fixed;right:max(18px,calc(50% - 262px));bottom:calc(84px + env(safe-area-inset-bottom));width:58px;height:58px;border-radius:50%;background:var(--moss);color:#fff;border:0;font-size:30px;line-height:58px;text-align:center;text-decoration:none;box-shadow:0 6px 18px rgba(46,90,58,.35);z-index:9}
 .opt{display:block;width:100%;text-align:left;font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:13px 16px;margin-bottom:8px;cursor:pointer}
 .opt:active{background:var(--moss2)}
+.bot-fab{position:fixed;left:max(18px,calc(50% - 262px));bottom:calc(84px + env(safe-area-inset-bottom));width:52px;height:52px;border-radius:50%;background:var(--card);border:1.5px solid var(--line);box-shadow:0 6px 18px rgba(30,38,32,.15);font-size:22px;z-index:9;cursor:pointer}
+.bot-fab[hidden]{display:none}
+.bot-fab.unread::after{content:"";position:absolute;top:4px;right:4px;width:12px;height:12px;border-radius:50%;background:var(--clay);border:2px solid var(--card)}
+.msg{max-width:88%;padding:10px 13px;border-radius:16px;margin:8px 0;font-size:15px;line-height:1.4}
+.msg.bot{background:var(--card);border:1px solid var(--line);border-bottom-left-radius:6px}
+.msg.me{background:var(--moss);color:#fff;margin-left:auto;border-bottom-right-radius:6px}
+.msg .chips .chip{font-size:13px;padding:6px 11px;text-decoration:none}
+.msg .fb{margin-top:6px;font-size:13px;opacity:.7}.msg .fb button{background:none;border:0;font-size:14px;cursor:pointer;padding:0 6px 0 0}
+.chatbar{position:sticky;bottom:0;background:var(--paper);padding-top:8px}

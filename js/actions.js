@@ -56,7 +56,9 @@ const A={
    S.items.push({id,name:b.name.trim()||`${cat(b.cat).label} ${b.color}`,cat:b.cat,color:b.color,warmth:b.warmth||2,waterproof:!!b.waterproof,origin:null,price:null,season:seasonGuess(b.name),state:'propre',max:null,added:todayKey(),wears:0,sinceWash:0,lastWorn:null});
    photos.set(id,b.photo);DB.set('photo:'+id,b.photo)}
   const n=BATCH.items.length;BATCH=null;OUTS=null;save();toast(n+' vêtements ajoutés');location.hash='penderie'},
- washDo(){document.querySelectorAll('#sheet input[type=checkbox]:checked').forEach(c=>{const i=item(c.value);i.state='propre';i.sinceWash=0});OUTS=null;save();closeSheet();render();toast('Tout beau tout propre')},
+ washDo(el){const g=el&&el.dataset.g;if(g&&fullGroups().includes(g)){const st=S.stats||(S.stats={});st.fullWash=(st.fullWash||0)+1}
+  const wu=$('#washUnder');if(wu&&wu.checked)Object.values(under()).forEach(x=>{x.clean=x.total});
+  document.querySelectorAll('#sheet input[type=checkbox][value]:checked').forEach(c=>{const i=item(c.value);if(i){i.state='propre';i.sinceWash=0}});OUTS=null;save();closeSheet();render();toast('Tout beau tout propre')},
  dr(el){DR.touched={...(DR.touched||{}),[el.dataset.k]:true};DR[el.dataset.k]=el.dataset.k==='warmth'?+el.dataset.v:el.dataset.v;el.parentElement.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c===el));if(el.dataset.k==='cat'){DR.max=null;$('#maxv').textContent=fmtMax()}},
  maxDec(){const m=DR.max??cat(DR.cat).max;DR.max=Math.max(0,m-1);$('#maxv').textContent=fmtMax()},
  maxInc(){const m=DR.max??cat(DR.cat).max;DR.max=Math.min(30,m+1);$('#maxv').textContent=fmtMax()},

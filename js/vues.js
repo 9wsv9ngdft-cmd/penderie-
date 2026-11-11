@@ -51,7 +51,7 @@ function vMatin(){
  if(!active().length)return h+`<div class="card empty"><div class="serif">Ta penderie est vide</div><p class="muted">Commence par photographier quelques vêtements : un haut, un bas, des chaussures suffisent pour une première tenue.</p><a class="btn" href="#ajout">Ajouter un vêtement</a></div>`;
  const w=effWeather();
  h+=weatherCard(w);
- h+=seasonNotice()+laundryNotice()+wishNotice()+circularNotice();
+ h+=seasonNotice()+laundryNotice()+wishNotice()+circularNotice()+photoOfDay();
  const todayLog=S.log.find(l=>l.date===todayKey());
  if(todayLog){
   const its=todayLog.ids.map(item).filter(Boolean);
@@ -60,15 +60,15 @@ function vMatin(){
  }
  h+=yesterdayCard();
  if(!w)return h+`<p class="muted" style="margin-top:20px">Indique la météo pour recevoir des idées de tenues.</p>`;
- if(!OUTS)OUTS=genOutfits(w);
+ if(!OUTS){OUTS=genOutfits(w);const pt=plannedToday();if(pt)OUTS=[pt,...OUTS.filter(o=>favKey(o)!==favKey(pt))].slice(0,3)}
  if(!OUTS.length)return h+`<div class="card"><p>Rien de propre à proposer… C’est peut-être le jour de la lessive ?</p><a class="btn sm" href="#penderie">Voir la penderie</a></div>`;
  const tip={froid:'Superpose : trois couches fines tiennent plus chaud qu’une épaisse.',frais:'Prévois une couche que tu peux enlever à midi.',doux:'Une petite maille suffira.',chaud:'Matières légères et respirantes.'}[w.band];
- h+=`<h2>Idées du jour</h2>${occChips()}<p class="tiny" style="margin-top:-4px">${tip} On privilégie ce qui est déjà porté et ce que tu as un peu oublié.</p>`;
+ h+=`<div class="row between" style="margin-top:30px"><h2 style="margin:0">Idées du jour</h2><button class="btn sm ghost" data-a="weekOpen">📅 Ma semaine</button></div><div class="spacer"></div>${occChips()}<p class="tiny" style="margin-top:-4px">${tip} On privilégie ce qui est déjà porté et ce que tu as un peu oublié.</p>`;
  h+=OUTS.map((o,k)=>{const its=o.map(item).filter(Boolean);
   const miss=[];const cats=its.map(i=>i.cat);
   if(!cats.includes('robe')&&!cats.includes('bas'))miss.push('bas');
   if((w.band==='froid'||w.band==='frais')&&!cats.includes('pull'))miss.push('pull');
-  return `<div class="card outfit"><div class="num">${o.fav?'♥ Une de tes favorites':'Tenue '+(k+1)}</div><div class="strip">${its.map(i=>thumb(i)).join('')}</div><ul>${its.map(i=>`<li><span>${esc(i.name)}</span><span>${i.state==='porte'?'déjà porté':i.boost?'mis en avant':i.lastWorn?(daysSince(i.lastWorn)>45?'à faire revivre':''):(daysSince(i.added)>=30?'jamais porté':'')}</span></li>`).join('')}</ul>${miss.length?`<p class="tiny">Pas de ${miss.join(' ni de ')} propre dispo.</p>`:''}<button class="btn block" data-a="wearOutfit" data-k="${k}">Je porte ça</button></div>`}).join('');
+  return `<div class="card outfit"><div class="num">${o.plan?'📅 Prévue dans ta semaine':o.fav?'♥ Une de tes favorites':'Tenue '+(k+1)}</div><div class="strip">${its.map(i=>thumb(i)).join('')}</div><ul>${its.map(i=>`<li><span>${esc(i.name)}</span><span>${i.state==='porte'?'déjà porté':i.boost?'mis en avant':i.lastWorn?(daysSince(i.lastWorn)>45?'à faire revivre':''):(daysSince(i.added)>=30?'jamais porté':'')}</span></li>`).join('')}</ul>${miss.length?`<p class="tiny">Pas de ${miss.join(' ni de ')} propre dispo.</p>`:''}<button class="btn block" data-a="wearOutfit" data-k="${k}">Je porte ça</button></div>`}).join('');
  h+=`<button class="btn soft block" data-a="reroll">Autres idées</button>`;
  return h;
 }
@@ -78,8 +78,8 @@ function vPenderie(){
  let list=act.filter(i=>(F.cat==='all'||i.cat===F.cat)&&(F.state==='all'||i.state===F.state));
  list.sort((a,b)=>(a.cat>b.cat?1:a.cat<b.cat?-1:0)||a.name.localeCompare(b.name));
  let h=`<p class="eyebrow">${all.length-nStored} pièce${all.length-nStored>1?'s':''} · mode ${SEASONS[curSeason()].toLowerCase()}</p><h1>Penderie</h1>`;
- h+=seasonNotice()+laundryCard();
- h+=`<div class="row" style="margin-bottom:12px">${favs().length?`<button class="btn sm ghost" data-a="favsOpen">♥ Tenues favorites (${favs().length})</button>`:''}<button class="btn sm ghost" data-a="tripOpen">${S.trip?'🧳 Ma valise':'🧳 Préparer une valise'}</button></div>`;
+ h+=seasonNotice()+laundryCard()+collectionBar()+`<div style="margin-bottom:12px">${underLine()}</div>`;
+ h+=`<div class="row" style="margin-bottom:12px">${favs().length?`<button class="btn sm ghost" data-a="favsOpen">♥ Tenues favorites (${favs().length})</button>`:''}<button class="btn sm ghost" data-a="invOpen">⚡ Inventaire express</button><button class="btn sm ghost" data-a="tripOpen">${S.trip?'🧳 Ma valise':'🧳 Préparer une valise'}</button></div>`;
  h+=`<div class="chips scroll">${[['all','Tout'],...CATS.map(c=>[c.id,c.label])].map(([v,l])=>`<button class="chip ${F.cat===v?'on':''}" data-a="fCat" data-v="${v}">${l}</button>`).join('')}</div><div class="spacer"></div>`;
  h+=`<div class="chips scroll">${[['all','Tous états'],...Object.entries(STATES)].map(([v,l])=>`<button class="chip ${F.state===v?'on':''}" data-a="fState" data-v="${v}">${l}${v!=='all'?` · ${act.filter(i=>i.state===v).length}`:''}</button>`).join('')}${nStored||F.stored?`<button class="chip ${F.stored?'on':''}" data-a="fStored">Rangés · ${nStored}</button>`:''}</div><div class="spacer"></div>`;
  if(!list.length)h+=`<div class="empty"><p class="muted">${act.length?'Rien ici avec ces filtres.':'Aucun vêtement pour l’instant.'}</p></div>`;
@@ -107,6 +107,7 @@ function vAjout(){
  return `<p class="eyebrow">${EDIT?'Modifier':'Nouveau vêtement'}</p><h1>${EDIT?esc(DR.name):'Ajouter'}</h1>
  ${EDIT?'':`<div class="card"><label class="toggle" style="border:0;padding:0;gap:12px"><span><b>Reconnaissance auto du type</b><br><span class="tiny">Reconnaît le type, la matière et le motif. Modèle téléchargé <b>une seule fois</b> (~150 Mo, en Wi-Fi de préférence), puis tout est analysé sur ton téléphone : aucune photo ne sort. La couleur, elle, est toujours détectée.</span><br><span class="tiny" id="aistat" style="color:var(--moss);font-weight:600">${esc(AI_MSG)}</span></span><input type="checkbox" id="aitog" ${S.ai?'checked':''}></label></div>
  <div class="card"><label class="toggle" style="border:0;padding:0;gap:12px"><span><b>Détourage automatique</b><br><span class="tiny">Retire le fond (lit, parquet…) et pose le vêtement sur un fond uni, façon catalogue. Modèle téléchargé une fois (~45 Mo), traitement sur ton téléphone, quelques secondes par photo.</span></span><input type="checkbox" id="cuttog" ${S.cut?'checked':''}></label><span class="tiny" id="cutstat" style="color:var(--moss);font-weight:600">${esc(CUT_MSG)}</span></div>
+ <button class="btn block" data-a="invOpen" style="margin-bottom:10px">⚡ Inventaire express (2 min, sans photo)</button>
  <label class="btn soft block" style="margin-bottom:14px">Scanner plusieurs vêtements d’un coup<input type="file" accept="image/*" multiple id="multi" hidden></label>`}
  <label class="photo-drop"><div class="ph" id="prev" ${DR.photo?`style="background-image:url('${DR.photo}')"`:''}></div><input type="file" accept="image/*" capture="environment" id="pic"><span class="btn sm soft" style="margin-top:${DR.photo?10:0}px">${DR.photo?'Changer la photo':'📷 Prendre une photo'}</span>${DR.orig?`<div class="row" style="justify-content:center;margin-top:10px"><button class="btn sm ghost" data-a="swapPhoto">${DR.cutOn===false?'Retirer le fond':'Garder le fond d’origine'}</button></div>`:''}
  <div class="tiny" style="margin-top:8px">${DR.detected?`<b>Détecté : ${esc(DR.detected)}</b> · vérifie ci-dessous`:'Reste sur ton téléphone, compressée à ~60 Ko.'}</div></label>
@@ -152,12 +153,12 @@ function vBilan(){
   <div class="stat"><b>${act.length?Math.round(sh/act.length*100):0}%</b><span>de seconde main</span></div>
  </div>
  <h2>Objectif 30 ports</h2><div class="card"><p>${thirty} pièce${thirty>1?'s':''} sur ${act.length} ont atteint 30 ports.</p><div class="bar"><i style="width:${act.length?thirty/act.length*100:0}%"></i></div><p class="tiny">Porter un vêtement plus longtemps est le geste qui réduit le plus son impact : l’essentiel de l’empreinte vient de la fabrication.</p></div>`;
- h+=costBilan()+co2Bilan();
+ h+=badgesBilan()+costBilan()+co2Bilan();
  h+=`<h2>Un peu oubliés</h2>`;
  if(dormant.length)h+=`<p class="tiny" style="margin-top:-4px">Pas portés depuis 3 mois (ou jamais depuis leur ajout). Remets-les en avant… ou offre-leur une seconde vie.</p><div class="hlist">${dormant.map(i=>`<button class="it" data-a="open" data-id="${i.id}">${thumb(i)}<div class="nm">${esc(i.name)}</div><div class="mt">${i.lastWorn?daysSince(i.lastWorn)+' j':'jamais porté'}${i.boost?' · en avant':''}</div></button>`).join('')}</div>`;
  else h+=`<p class="muted">Rien qui dort. Toute ta penderie vit !</p>`;
  h+=`<h2>À réparer</h2>`;
- if(rep.length>=3)h+=`<div class="notice">${rep.length} vêtements attendent une réparation : sors le kit couture une fois pour tous. Une session, et ils repartent !</div>`;
+ if(rep.length)h+=`<button class="btn block" data-a="sessionOpen" style="margin-bottom:12px">🧵 Lancer une session réparation (${rep.length})</button>`;
  if(rep.length)h+=`<div class="hlist">${rep.map(i=>`<button class="it" data-a="open" data-id="${i.id}">${thumb(i)}<div class="nm">${esc(i.name)}</div></button>`).join('')}</div><div class="spacer"></div>`;
  h+=`<div class="card">${REPAIRS.map(([t,p])=>`<details><summary>${t}</summary><p>${p}</p></details>`).join('')}</div>
  <div class="card"><h3>Ailleurs que dans la poubelle</h3><p class="tiny">Retoucheurs labellisés « bonus réparation » (une partie de la réparation est prise en charge), points de collecte textile, recycleries :</p>
@@ -165,7 +166,8 @@ function vBilan(){
  if(gone.length)h+=`<h2>Partis de la penderie</h2><div class="card"><p><b>${second}</b> sur ${gone.length} ont eu une seconde vie.</p>${REASONS.map(([k,l])=>{const n=gone.filter(i=>i.removed.reason===k).length;return n?`<div class="row between tiny"><span>${l}</span><b>${n}</b></div>`:''}).join('')}</div>`;
  h+=`<h2>Réglages</h2>`;
  if(IN_PREVIEW)h+=`<div class="notice">Tu es dans l’<b>aperçu</b> : les données restent dans ce navigateur, mais la météo auto et l’export de sauvegarde sont désactivés. Pour la vraie app, installe la version complète (voir mon message).</div>`;
- h+=`<div class="card"><p class="label" style="margin-top:0">Saison en cours</p><div class="chips">${['ete','hiver'].map(k=>`<button class="chip ${curSeason()===k?'on':''}" data-a="seasonSwitch" data-v="${k}">${SEASONS[k]}</button>`).join('')}</div>
+ h+=`<div class="card">${botSettings(false)}<div class="spacer"></div><button class="btn sm" data-a="botSave">Enregistrer</button></div>
+ <div class="card"><p class="label" style="margin-top:0">Saison en cours</p><div class="chips">${['ete','hiver'].map(k=>`<button class="chip ${curSeason()===k?'on':''}" data-a="seasonSwitch" data-v="${k}">${SEASONS[k]}</button>`).join('')}</div>
   <p class="label">Ce qui te parle (pour les équivalences CO₂)</p><div class="chips">${Object.entries(INTERESTS).map(([k,l])=>`<button class="chip ${(S.interests||[]).includes(k)?'on':''}" data-a="interest" data-v="${k}">${l}</button>`).join('')}</div>
   <p class="label">Ta machine à laver</p><div class="chips">${[5,6,7,8,9,10].map(k=>`<button class="chip ${capKg()===k?'on':''}" data-a="setKg" data-v="${k}">${k} kg</button>`).join('')}</div></div>
  <div class="card">
@@ -179,7 +181,9 @@ function vBilan(){
 }
 
 /* ---------- feuilles (modales) ---------- */
-function sheet(html){const o=$('#sheet');o.innerHTML=`<div class="sheet-bg" data-a="close"></div><div class="sheet-card">${html}</div>`;o.hidden=false;
+function sheet(html){const o=$('#sheet');const was=!o.hidden,prev=o.querySelector('.sheet-card'),st=prev?prev.scrollTop:0;
+ o.innerHTML=`<div class="sheet-bg" data-a="close"></div><div class="sheet-card"${was?' style="animation:none"':''}>${html}</div>`;o.hidden=false;
+ if(was){const c=o.querySelector('.sheet-card');c.scrollTop=st} // mise à jour sur place : pas d'animation, on garde la position
  // glisser vers le bas pour fermer
  const c=o.querySelector('.sheet-card');let y0=null,dy=0;
  c.addEventListener('touchstart',e=>{y0=c.scrollTop<=0?e.touches[0].clientY:null;dy=0},{passive:true});
@@ -192,6 +196,7 @@ function itemSheet(id){
  sheet(`${thumb(i,'ph big')}<h2 style="margin-top:4px">${esc(i.name)}</h2>
  ${i.ref?`<p class="tiny" style="margin:0 0 4px">${/^https?:\/\//i.test(i.ref)?`<a href="${esc(i.ref)}" target="_blank" rel="noopener">Voir la fiche produit</a>`:'Réf. '+esc(i.ref)}</p>`:''}
  <p class="tiny">${cat(i.cat).label} · ${esc(i.color)} · ${WARMTH[i.warmth]||''}${i.waterproof?' · imperméable':''}${originOf(i)?' · '+ORIGINS[originOf(i)].toLowerCase():''}${i.season&&i.season!=='toutes'?' · '+SEASONS[i.season].toLowerCase():''}${i.occ&&i.occ.length?' · '+i.occ.map(o=>OCCS[o].toLowerCase()).join(', '):''} · lessive ${WASH[washOf(i)].toLowerCase()}</p>
+ ${colorPick(i)}
  ${paused(i)?`<p class="notice" style="margin:8px 0">En pause pendant le Project 333.</p>`:''}
  ${stored(i)?`<p class="notice" style="margin:8px 0">Rangé jusqu’à la saison ${i.season==='ete'?'d’été':'d’hiver'} : il n’est pas proposé dans les tenues.</p>`:''}
  <div class="stats3"><div><b>${w}</b><span>ports</span></div><div><b>${m?`${i.sinceWash||0}/${m}`:'—'}</b><span>depuis lavage</span></div><div><b>${d===null?'jamais':d===0?'auj.':d+' j'}</b><span>dernier port</span></div></div>
@@ -210,5 +215,5 @@ function removeSheet(id){const i=item(id);
  sheet(`<h2 style="margin-top:0">Où part « ${esc(i.name)} » ?</h2><p class="tiny">Il reste dans ton historique pour le bilan.</p>${REASONS.map(([k,l])=>`<button class="btn ${['jete','perdu'].includes(k)?'ghost':'soft'} block" style="margin-bottom:8px" data-a="removeDo" data-id="${id}" data-v="${k}">${l}</button>`).join('')}<div class="spacer"></div><button class="btn sm danger" data-a="deleteDo" data-id="${id}">Supprimer définitivement (erreur de saisie)</button>`);
 }
 function washSheet(g){const s=active().filter(i=>i.state==='sale'&&(!g||washOf(i)===g));
- sheet(`<h2 style="margin-top:0">${g?'Machine '+WASH[g].toLowerCase():'Sortis de la machine'}</h2>${g?'<p class="tiny">Décoche ce qui n’est pas passé dans cette machine.</p>':''}${s.map(i=>`<label class="chk"><input type="checkbox" checked value="${i.id}">${thumb(i,'ph mini')}<span>${esc(i.name)}</span></label>`).join('')}<div class="spacer"></div><button class="btn block" data-a="washDo">C’est propre</button><p class="tiny" style="margin-top:10px">Astuce : lavage à 30 °C et séchage à l’air, c’est moins d’énergie et des vêtements qui durent plus.</p>`);
+ sheet(`<h2 style="margin-top:0">${g?'Machine '+WASH[g].toLowerCase():'Sortis de la machine'}</h2>${g?'<p class="tiny">Décoche ce qui n’est pas passé dans cette machine.</p>':''}${s.map(i=>`<label class="chk"><input type="checkbox" checked value="${i.id}">${thumb(i,'ph mini')}<span>${esc(i.name)}</span></label>`).join('')}${Object.keys(under()).length?`<label class="chk"><input type="checkbox" id="washUnder" checked><span>🧦 Les dessous aussi</span></label>`:''}<div class="spacer"></div><button class="btn block" data-a="washDo" data-g="${g||''}">C’est propre</button><p class="tiny" style="margin-top:10px">Astuce : lavage à 30 °C et séchage à l’air, c’est moins d’énergie et des vêtements qui durent plus.</p>`);
 }

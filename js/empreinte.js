@@ -84,7 +84,7 @@ function co2Bilan(){
   <div class="stat"><b>${fmtKg(ward)}</b><span>CO₂e : l’empreinte de ta penderie</span></div>
   <div class="stat"><b>${eur(resale)}</b><span>récupérés en revendant</span></div></div>
   <div class="card" style="margin-top:12px">${avoided>=1?`<p>Ce que tu as évité, c’est ${eq(avoided,7).replace('≈ ','environ ')} 🌱</p>`:''}
-  ${wears?`<p class="tiny">En moyenne, chaque port de ta penderie pèse ${fmtKg(ward/wears)} CO₂e. Porter plus longtemps fait baisser ce chiffre.</p>`:''}
+  ${wears>=act.length*3&&wears>=20?`<p class="tiny">En moyenne, chaque port de ta penderie pèse ${fmtKg(ward/wears)} CO₂e. Porter plus longtemps fait baisser ce chiffre.</p>`:''}
   <p class="tiny">Ordres de grandeur ADEME (Impact CO2), moyennes par type de vêtement : ils ne mesurent pas précisément chacun de tes vêtements.</p></div>`;
 }
 
@@ -100,7 +100,9 @@ function onbSheet(){
   ()=>`<h2 style="margin-top:0">Deux réglages</h2>
    ${IN_PREVIEW?'':`<p class="label">Ta ville, pour la météo</p><form class="row" data-f="city" style="flex-wrap:nowrap"><input type="search" name="city" placeholder="${S.city?esc(S.city.name):'ex. Lyon'}" autocomplete="off"><button class="btn sm">OK</button></form>`}
    <p class="label">Ta machine à laver</p><div class="chips">${[5,6,7,8,9,10].map(k=>`<button class="chip ${capKg()===k?'on':''}" data-a="onbKg" data-v="${k}">${k} kg</button>`).join('')}</div>`,
-  ()=>`<h2 style="margin-top:0">Scanner ta penderie</h2><ul style="padding-left:18px;margin:0 0 12px">
+  ()=>`<h2 style="margin-top:0">Ton assistant shopper</h2><p class="tiny">Il connaît ta penderie, ton budget et tes intentions, et il t’aide à acheter moins mais mieux. Tout reste sur ton téléphone. Donne-lui un nom et un caractère :</p>${botSettings(true)}`,
+  ()=>`<h2 style="margin-top:0">Ta penderie</h2><p>Le plus rapide : <b>l’inventaire express</b>. Tu comptes tes vêtements et tes dessous en 2 minutes, et tu ajoutes les photos petit à petit.</p>
+   <button class="btn block" data-a="onbInv">⚡ Inventaire express</button><p class="label">Ou en photos, quand tu veux</p><ul style="padding-left:18px;margin:0 0 12px">
    <li>Pose chaque vêtement à plat sur un fond uni (lit, parquet).</li><li>Une pièce par photo, bien éclairée.</li>
    <li>Le plus rapide : « Scanner plusieurs vêtements d’un coup » depuis ta galerie.</li></ul>
    <p class="tiny">Tu peux commencer par 10 pièces : ça suffit pour les premières tenues.</p>`];
@@ -111,9 +113,10 @@ function onbSheet(){
   <div class="spacer"></div><button class="btn sm ghost block" data-a="onbEnd">${last?'Plus tard':'Passer'}</button>`);
 }
 Object.assign(A,{
- onbNext(){ONB++;onbSheet()},onbPrev(){ONB=Math.max(0,ONB-1);onbSheet()},
+ onbNext(){if(typeof keepBot==='function'&&$('#botName'))keepBot();ONB++;onbSheet()},onbPrev(){if(typeof keepBot==='function'&&$('#botName'))keepBot();ONB=Math.max(0,ONB-1);onbSheet()},
+ onbInv(){S.onboarded=true;save();INVD=null;invSheet()},
  onbKg(el){S.machineKg=+el.dataset.v;save();onbSheet()},
- onbEnd(el){S.onboarded=true;save();closeSheet();if(el.dataset.v)location.hash=el.dataset.v;else render()},
+ onbEnd(el){if(typeof keepBot==='function'&&$('#botName'))keepBot();S.onboarded=true;save();closeSheet();if(el.dataset.v)location.hash=el.dataset.v;else render()},
  onbOpen(){ONB=0;onbSheet()},
  interest(el){const s=new Set(S.interests||[]),v=el.dataset.v;s.has(v)?s.delete(v):s.add(v);S.interests=[...s];save();
   if(!$('#sheet').hidden&&ONB===1)onbSheet();else render()},
