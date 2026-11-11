@@ -65,7 +65,7 @@ nav.tabs a.on{color:var(--moss);font-weight:600}
 .ph{aspect-ratio:4/5;border-radius:14px;background-size:cover;background-position:center;position:relative;overflow:hidden;background-color:#e9e2d4}
 .ph.sw{box-shadow:inset 0 0 0 1px rgba(0,0,0,.09);display:flex;align-items:flex-end;justify-content:flex-start;padding:8px}
 .ph.sw span{font-size:11px;font-weight:600;background:rgba(251,248,242,.85);color:var(--ink);padding:2px 8px;border-radius:999px}
-.ph.big{aspect-ratio:1/1;max-height:42vh;width:100%;margin-bottom:12px}
+.ph.big{aspect-ratio:1/1;max-height:42vh;width:100%;margin-bottom:12px;background-size:contain;background-repeat:no-repeat;background-color:#EFE9DD}
 .ph.mini{width:52px;flex:none;border-radius:10px}
 .ph.mini.sw span{display:none}
 .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
@@ -397,12 +397,16 @@ function vAjout(){
  const m=DR.max??cat(DR.cat).max;
  return `<p class="eyebrow">${EDIT?'Modifier':'Nouveau vêtement'}</p><h1>${EDIT?esc(DR.name):'Ajouter'}</h1>
  ${EDIT?'':`<div class="card"><label class="toggle" style="border:0;padding:0;gap:12px"><span><b>Reconnaissance auto du type</b><br><span class="tiny">Reconnaît le type, la matière et le motif. Modèle téléchargé <b>une seule fois</b> (~150 Mo, en Wi-Fi de préférence), puis tout est analysé sur ton téléphone : aucune photo ne sort. La couleur, elle, est toujours détectée.</span><br><span class="tiny" id="aistat" style="color:var(--moss);font-weight:600">${esc(AI_MSG)}</span></span><input type="checkbox" id="aitog" ${S.ai?'checked':''}></label></div>
+ <div class="card"><label class="toggle" style="border:0;padding:0;gap:12px"><span><b>Détourage automatique</b><br><span class="tiny">Retire le fond (lit, parquet…) et pose le vêtement sur un fond uni, façon catalogue. Modèle téléchargé une fois (~45 Mo), traitement sur ton téléphone, quelques secondes par photo.</span></span><input type="checkbox" id="cuttog" ${S.cut?'checked':''}></label><span class="tiny" id="cutstat" style="color:var(--moss);font-weight:600">${esc(CUT_MSG)}</span></div>
  <label class="btn soft block" style="margin-bottom:14px">Scanner plusieurs vêtements d’un coup<input type="file" accept="image/*" multiple id="multi" hidden></label>`}
- <label class="photo-drop"><div class="ph" id="prev" ${DR.photo?`style="background-image:url('${DR.photo}')"`:''}></div><input type="file" accept="image/*" capture="environment" id="pic"><span class="btn sm soft" style="margin-top:${DR.photo?10:0}px">${DR.photo?'Changer la photo':'📷 Prendre une photo'}</span><div class="tiny" style="margin-top:8px">${DR.detected?`<b>Détecté : ${esc(DR.detected)}</b> · vérifie ci-dessous`:'Reste sur ton téléphone, compressée à ~60 Ko.'}</div></label>
+ <label class="photo-drop"><div class="ph" id="prev" ${DR.photo?`style="background-image:url('${DR.photo}')"`:''}></div><input type="file" accept="image/*" capture="environment" id="pic"><span class="btn sm soft" style="margin-top:${DR.photo?10:0}px">${DR.photo?'Changer la photo':'📷 Prendre une photo'}</span>${DR.orig?`<div class="row" style="justify-content:center;margin-top:10px"><button class="btn sm ghost" data-a="swapPhoto">${DR.cutOn===false?'Retirer le fond':'Garder le fond d’origine'}</button></div>`:''}
+ <div class="tiny" style="margin-top:8px">${DR.detected?`<b>Détecté : ${esc(DR.detected)}</b> · vérifie ci-dessous`:'Reste sur ton téléphone, compressée à ~60 Ko.'}</div></label>
+ <button class="btn sm ghost block" data-a="pasteImg" style="margin-top:8px">Coller une image (photo du produit…)</button>
  <p class="label">Nom</p><input type="text" id="nm" value="${esc(DR.name)}" placeholder="ex. Pull marin rayé" autocomplete="off">
  <p class="label">Catégorie</p><div class="chips">${CATS.map(c=>`<button class="chip ${DR.cat===c.id?'on':''}" data-a="dr" data-k="cat" data-v="${c.id}">${c.label}</button>`).join('')}</div>
  <p class="label">Couleur dominante</p><div class="chips">${COLORS.map(([n,v])=>`<button class="chip ${DR.color===n?'on':''}" data-a="dr" data-k="color" data-v="${n}"><span class="dot" style="background:${v}"></span>${n}</button>`).join('')}</div>
  <p class="label">Chaleur</p><div class="chips">${Object.entries(WARMTH).map(([k,l])=>`<button class="chip ${+DR.warmth===+k?'on':''}" data-a="dr" data-k="warmth" data-v="${k}">${l}</button>`).join('')}</div>
+ <p class="label">Marque, référence ou lien <span style="text-transform:none;font-weight:400">(facultatif)</span></p><input type="text" id="ref" value="${esc(DR.ref||'')}" placeholder="ex. Uniqlo 455123, ou lien du produit" autocomplete="off"><p class="tiny" style="margin-top:6px">Utile le jour où tu le revends ou le donnes.</p>
  <p class="label">Ports avant lavage</p><div class="stepper"><button data-a="maxDec">−</button><b id="maxv">${m===0?'jamais sale':m}</b><button data-a="maxInc">+</button></div><p class="tiny" style="margin-top:6px">Laver moins souvent = moins d’eau, d’énergie et d’usure. Aérer un pull entre deux ports suffit souvent.</p>
  <div class="spacer"></div>
  <label class="toggle"><span>Imperméable</span><input type="checkbox" id="wp" ${DR.waterproof?'checked':''}></label>
@@ -457,6 +461,7 @@ function closeSheet(){const o=$('#sheet');o.hidden=true;o.innerHTML=''}
 function itemSheet(id){
  const i=item(id);if(!i)return;const m=maxOf(i),d=daysSince(i.lastWorn),w=i.wears||0;
  sheet(`${thumb(i,'ph big')}<h2 style="margin-top:4px">${esc(i.name)}</h2>
+ ${i.ref?`<p class="tiny" style="margin:0 0 4px">${/^https?:\/\//i.test(i.ref)?`<a href="${esc(i.ref)}" target="_blank" rel="noopener">Voir la fiche produit</a>`:'Réf. '+esc(i.ref)}</p>`:''}
  <p class="tiny">${cat(i.cat).label} · ${esc(i.color)} · ${WARMTH[i.warmth]||''}${i.waterproof?' · imperméable':''}${i.secondHand?' · seconde main':''}</p>
  <div class="stats3"><div><b>${w}</b><span>ports</span></div><div><b>${m?`${i.sinceWash||0}/${m}`:'—'}</b><span>depuis lavage</span></div><div><b>${d===null?'jamais':d===0?'auj.':d+' j'}</b><span>dernier port</span></div></div>
  <div class="bar"><i style="width:${Math.min(100,w/30*100)}%"></i></div><p class="tiny">${w>=30?'Objectif 30 ports atteint 🌱':`Encore ${30-w} ports pour l’objectif 30.`}</p>
@@ -464,6 +469,7 @@ function itemSheet(id){
  ${i.state==='reparer'?`<p class="tiny" style="margin-top:10px">Il ne sera plus proposé dans les tenues. Des astuces de réparation t’attendent dans Bilan.</p>`:''}
  <div class="spacer"></div>
  ${!i.boost&&(i.lastWorn?d>=30:true)?`<button class="btn soft block" data-a="boost" data-id="${i.id}">Me le proposer bientôt</button><div class="spacer"></div>`:''}
+ ${photos.get(i.id)&&!i.cut?`<button class="btn sm soft block" data-a="cutItem" data-id="${i.id}" style="margin-bottom:10px">Retirer le fond de la photo</button>`:''}
  <div class="row"><button class="btn sm ghost" data-a="edit" data-id="${i.id}">Modifier</button><button class="btn sm danger" data-a="removeAsk" data-id="${i.id}">Sortir de la penderie</button></div>`);
 }
 function removeSheet(id){const i=item(id);
@@ -507,14 +513,18 @@ const TYPES=[ // [anglais pour le modèle, catégorie, nom français, chaleur, i
 ];
 const MATS=[['wool','en laine',1],['cotton','en coton',0],['linen','en lin',-1],['denim','en jean',0],['leather','en cuir',0],['fleece','polaire',1],['silk','en soie',-1],['synthetic polyester','synthétique',0]];
 const PATS=[['plain solid color',''],['striped','rayé'],['plaid checkered','à carreaux'],['floral print','fleuri'],['polka dot','à pois'],['graphic print','imprimé']];
-let AI=null,AI_LOADING=null,AI_MSG='';
+let AI=null,AI_LOADING=null,AI_MSG='',TMOD=null;
+async function getT(){if(!TMOD){TMOD=await import(TF_URL);TMOD.env.allowLocalModels=false}return TMOD}
+function progressCb(setMsg,label){const files={};let last=0;return p=>{if(p.status==='progress'&&p.total){files[p.file]=[p.loaded,p.total];
+ const L=Object.values(files).reduce((a,b)=>a+b[0],0),Tt=Object.values(files).reduce((a,b)=>a+b[1],0);const now=Date.now();
+ if(now-last>400){last=now;setMsg(`${label} : ${Math.round(L/1048576)} / ${Math.round(Tt/1048576)} Mo`)}}}}
 function aiMsg(m){AI_MSG=m;const el=$('#aistat');if(el)el.textContent=m}
 const norm=v=>{let n=0;for(const x of v)n+=x*x;n=Math.sqrt(n)||1;return Float32Array.from(v,x=>x/n)};
 const dot=(a,b)=>{let s=0;for(let i=0;i<a.length;i++)s+=a[i]*b[i];return s};
 function aiLoad(){
  if(AI)return Promise.resolve(AI);
  if(!AI_LOADING)AI_LOADING=(async()=>{
-  const T=await import(TF_URL);T.env.allowLocalModels=false;
+  const T=await getT();
   const files={};let last=0;
   const progress_callback=p=>{if(p.status==='progress'&&p.total){files[p.file]=[p.loaded,p.total];const L=Object.values(files).reduce((a,b)=>a+b[0],0),Tt=Object.values(files).reduce((a,b)=>a+b[1],0);
    const now=Date.now();if(now-last>400){last=now;aiMsg(`Téléchargement du modèle : ${Math.round(L/1048576)} / ${Math.round(Tt/1048576)} Mo`)}}};
@@ -551,11 +561,54 @@ async function aiGuess(canvas){
  let noun=t[2];if(mat&&!noun.toLowerCase().includes(mat[1].replace(/^en /,'')))noun+=' '+mat[1];if(pat)noun+=' '+pat[1];
  return{cat:t[1],noun,warmth:Math.max(1,Math.min(3,t[3]+(mat?mat[2]:0))),waterproof:!!t[4],motif:!!pat,conf:c[1]};
 }
-async function analyze(file){
- const {url,canvas}=await compress(file);const r={photo:url,color:detectColor(canvas)};
- if(S.ai){try{const g=await aiGuess(canvas);if(g){Object.assign(r,g);if(g.motif)r.color='motif'}}catch(e){console.warn(e);r.aiErr=true}}
+/* Détourage : modèle RMBG-1.4 (BRIA) sur l'appareil, ~45 Mo téléchargés une fois. */
+const RMBG_ID='briaai/RMBG-1.4',BG_COLOR='#EFE9DD';
+let CUT=null,CUT_LOADING=null,CUT_MSG='';
+function cutMsg(m){CUT_MSG=m;const el=$('#cutstat');if(el)el.textContent=m}
+function cutLoad(){
+ if(CUT)return Promise.resolve(CUT);
+ if(!CUT_LOADING)CUT_LOADING=(async()=>{
+  const T=await getT();const pc=progressCb(cutMsg,'Téléchargement du détourage');
+  const model=await T.AutoModel.from_pretrained(RMBG_ID,{config:{model_type:'custom'},dtype:'q8',progress_callback:pc});
+  const proc=await T.AutoProcessor.from_pretrained(RMBG_ID,{config:{do_normalize:true,do_pad:false,do_rescale:true,do_resize:true,image_mean:[0.5,0.5,0.5],feature_extractor_type:'ImageFeatureExtractor',image_std:[1,1,1],resample:2,rescale_factor:0.00392156862745098,size:{width:1024,height:1024}},progress_callback:pc});
+  CUT={T,model,proc};cutMsg('Détourage prêt — tout se passe sur ton téléphone.');return CUT})().catch(e=>{CUT_LOADING=null;cutMsg('');throw e});
+ return CUT_LOADING}
+async function cutout(canvas){
+ const c=await cutLoad();const W=canvas.width,H=canvas.height;
+ const img=await c.T.RawImage.fromURL(canvas.toDataURL('image/jpeg',.92));
+ const {pixel_values}=await c.proc(img);const {output}=await c.model({input:pixel_values});
+ const mask=await c.T.RawImage.fromTensor(output[0].mul(255).to('uint8')).resize(W,H);
+ const id=canvas.getContext('2d').getImageData(0,0,W,H);let x0=W,y0=H,x1=0,y1=0,cnt=0;
+ for(let i=0;i<W*H;i++){const a=mask.data[i*mask.channels]??mask.data[i];id.data[i*4+3]=a;
+  if(a>128){cnt++;const x=i%W,y=(i/W)|0;if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}}
+ if(cnt<W*H*.03)return null; // rien de net trouvé : on garde la photo telle quelle
+ const fg=document.createElement('canvas');fg.width=W;fg.height=H;fg.getContext('2d').putImageData(id,0,0);
+ const bw=x1-x0+1,bh=y1-y0+1,OW=640,OH=800,out=document.createElement('canvas');out.width=OW;out.height=OH;
+ const o=out.getContext('2d');o.fillStyle=BG_COLOR;o.fillRect(0,0,OW,OH);
+ const sc=Math.min(OW*.84/bw,OH*.84/bh),dw=bw*sc,dh=bh*sc;
+ o.save();o.shadowColor='rgba(40,40,30,.22)';o.shadowBlur=26;o.shadowOffsetY=12;o.drawImage(fg,x0,y0,bw,bh,(OW-dw)/2,(OH-dh)/2,dw,dh);o.restore();
+ return{url:out.toDataURL('image/jpeg',.8),canvas:out,pixels:id};
+}
+// couleur dominante calculée uniquement sur les pixels du vêtement
+function colorFromPixels(id){
+ const d=id.data,votes={};const n=d.length/4,step=Math.max(1,Math.floor(n/2500));let tot=0;
+ for(let i=0;i<n;i+=step){const k=i*4;if(d[k+3]<200)continue;tot++;const r=d[k],g=d[k+1],b=d[k+2];let best=null,bd=1e12;
+  for(const [nm,[R,G,B]] of PAL){const rm=(r+R)/2;const dd=(2+rm/256)*(r-R)**2+4*(g-G)**2+(2+(255-rm)/256)*(b-B)**2;if(dd<bd){bd=dd;best=nm}}
+  votes[best]=(votes[best]||0)+1}
+ const top=Object.entries(votes).sort((a,b)=>b[1]-a[1]);if(!top.length)return 'noir';
+ if(top[1]&&top[0][1]<tot*.62&&top[1][1]>tot*.22){const A=PAL.find(p=>p[0]===top[0][0])[1],B=PAL.find(p=>p[0]===top[1][0])[1];
+  const lum=v=>.3*v[0]+.59*v[1]+.11*v[2];if(Math.abs(lum(A)-lum(B))>110)return 'motif'}
+ return top[0][0];
+}
+async function analyzeCanvas(canvas){
+ const r={};let base=canvas,cut=null;
+ if(S.cut){try{cut=await cutout(canvas)}catch(e){console.warn(e);r.cutErr=true}}
+ if(cut){r.photo=cut.url;r.orig=canvas.toDataURL('image/jpeg',.72);r.color=colorFromPixels(cut.pixels);base=cut.canvas}
+ else{r.photo=canvas.toDataURL('image/jpeg',.72);r.color=detectColor(canvas)}
+ if(S.ai){try{const g=await aiGuess(base);if(g){Object.assign(r,g);if(g.motif)r.color='motif'}}catch(e){console.warn(e);r.aiErr=true}}
  return r;
 }
+async function analyze(file){const {canvas}=await compress(file);return analyzeCanvas(canvas)}
 
 /* ---------- actions ---------- */
 const A={
@@ -582,6 +635,21 @@ const A={
  removeDo(el){const i=item(el.dataset.id);i.removed={date:todayKey(),reason:el.dataset.v};S.pins=S.pins.filter(x=>x!==i.id);OUTS=null;save();closeSheet();render();toast(['jete','perdu'].includes(el.dataset.v)?'Retiré de la penderie':'Merci pour sa seconde vie ♻︎')},
  deleteDo(el){const id=el.dataset.id;S.items=S.items.filter(i=>i.id!==id);S.log.forEach(l=>l.ids=l.ids.filter(x=>x!==id));photos.delete(id);DB.del('photo:'+id);OUTS=null;save();closeSheet();render()},
  washOpen:washSheet,
+ swapPhoto(){keepDraftInputs();[DR.photo,DR.orig]=[DR.orig,DR.photo];DR.cutOn=DR.cutOn===false;render()},
+ async pasteImg(){
+  try{const items=await navigator.clipboard.read();
+   for(const it of items){const t=it.types.find(x=>x.startsWith('image/'));if(t){await handleImage(await it.getType(t));return}}
+   toast('Pas d’image dans le presse-papiers')}
+  catch(e){toast('Collage refusé : enregistre l’image dans Photos puis choisis-la avec « Prendre une photo »')}},
+ async cutItem(el){
+  const i=item(el.dataset.id),p=photos.get(i.id);if(!p)return;
+  if(!S.cut){S.cut=true;save()}
+  toast('Détourage en cours…');
+  try{const img=new Image();await new Promise((res,rej)=>{img.onload=res;img.onerror=rej;img.src=p});
+   const c=document.createElement('canvas');c.width=img.width;c.height=img.height;c.getContext('2d').drawImage(img,0,0);
+   const r=await cutout(c);if(!r){toast('Vêtement pas assez net pour le détourer');return}
+   photos.set(i.id,r.url);DB.set('photo:'+i.id,r.url);i.cut=true;save();itemSheet(i.id);if(VIEW!=='ajout')render();toast('Fond retiré')}
+  catch(e){toast(IN_PREVIEW?'Indisponible dans l’aperçu : marche dans la version en ligne':'Détourage impossible (connexion ?)')}},
  batchDrop(el){BATCH.items.splice(+el.dataset.k,1);if(!BATCH.items.length)BATCH=null;render()},
  batchCancel(){BATCH=null;render()},
  batchSave(){
@@ -595,8 +663,8 @@ const A={
  maxDec(){const m=DR.max??cat(DR.cat).max;DR.max=Math.max(0,m-1);$('#maxv').textContent=fmtMax()},
  maxInc(){const m=DR.max??cat(DR.cat).max;DR.max=Math.min(30,m+1);$('#maxv').textContent=fmtMax()},
  saveItem(el){
-  DR.name=$('#nm').value.trim()||`${cat(DR.cat).label} ${DR.color}`;DR.waterproof=$('#wp').checked;DR.secondHand=$('#sh').checked;
-  const {photo,touched,detected,...data}=DR;
+  DR.name=$('#nm').value.trim()||`${cat(DR.cat).label} ${DR.color}`;DR.ref=$('#ref').value.trim();DR.waterproof=$('#wp').checked;DR.secondHand=$('#sh').checked;
+  const {photo,touched,detected,orig,cutOn,...data}=DR;if(orig)data.cut=cutOn!==false;
   if(EDIT){const k=S.items.findIndex(i=>i.id===EDIT);S.items[k]={...S.items[k],...data}}
   else{data.id=uid();data.added=todayKey();data.wears=0;data.sinceWash=data.state==='porte'?1:0;data.lastWorn=null;S.items.push(data)}
   const id=EDIT||data.id;
@@ -617,23 +685,30 @@ const fmtMax=()=>{const m=DR.max??cat(DR.cat).max;return m===0?'jamais sale':m};
 
 document.addEventListener('click',e=>{const el=e.target.closest('[data-a]');if(!el)return;const f=A[el.dataset.a];if(f){e.preventDefault();f(el)}});
 document.addEventListener('submit',e=>{const f=e.target.closest('form[data-f=city]');if(!f)return;e.preventDefault();setCity(f.city.value)});
+function keepDraftInputs(){if(!DR)return;const n=$('#nm'),r=$('#ref'),wp=$('#wp'),sh=$('#sh');if(n)DR.name=n.value;if(r)DR.ref=r.value;if(wp)DR.waterproof=wp.checked;if(sh)DR.secondHand=sh.checked}
+async function handleImage(blob){
+ if(!DR)DR=newDraft();keepDraftInputs();
+ if((S.ai&&!AI)||(S.cut&&!CUT))toast('Analyse…');else if(S.cut)toast('Détourage…');
+ try{const {canvas}=await compress(blob);const r=await analyzeCanvas(canvas);const t=DR.touched||{};
+  DR.photo=r.photo;DR.orig=r.orig||null;DR.cutOn=r.orig?true:undefined;
+  if(!t.color)DR.color=r.color;
+  if(r.cat&&!t.cat&&!EDIT){DR.cat=r.cat;DR.max=null;if(!t.warmth)DR.warmth=r.warmth;if(r.waterproof)DR.waterproof=true}
+  if(!DR.name.trim()&&!EDIT)DR.name=r.motif?r.noun:`${r.noun||cat(DR.cat).label} ${DR.color==='motif'?'à motif':DR.color}`;
+  DR.detected=[r.noun||(r.cat?cat(r.cat).label:null),DR.color].filter(Boolean).join(' · ');
+  if(r.aiErr||r.cutErr)toast(IN_PREVIEW?'IA indisponible dans l’aperçu':'Une partie de l’analyse a échoué (connexion ?)');
+  render()}catch(err){toast('Image illisible')}
+}
+document.addEventListener('paste',e=>{if(VIEW!=='ajout'||BATCH)return;const f=[...((e.clipboardData&&e.clipboardData.items)||[])].find(i=>i.type.startsWith('image/'));if(f){e.preventDefault();handleImage(f.getAsFile())}});
 document.addEventListener('change',async e=>{
- if(e.target.id==='pic'&&e.target.files[0]){
-  DR.name=$('#nm').value;DR.waterproof=$('#wp').checked;DR.secondHand=$('#sh').checked;
-  if(S.ai&&!AI)toast('Analyse…');
-  try{const r=await analyze(e.target.files[0]);const t=DR.touched||{};DR.photo=r.photo;
-   if(!t.color)DR.color=r.color;
-   if(r.cat&&!t.cat&&!EDIT){DR.cat=r.cat;DR.max=null;if(!t.warmth)DR.warmth=r.warmth;if(r.waterproof)DR.waterproof=true}
-   if(!DR.name.trim()&&!EDIT)DR.name=r.motif?r.noun:`${r.noun||cat(DR.cat).label} ${DR.color==='motif'?'à motif':DR.color}`;
-   DR.detected=[r.noun||(r.cat?cat(r.cat).label:null),DR.color].filter(Boolean).join(' · ');
-   if(r.aiErr)toast('Reconnaissance du type indisponible ici');
-   render()}catch(err){toast('Photo illisible')}}
+ if(e.target.id==='pic'&&e.target.files[0])handleImage(e.target.files[0]);
  if(e.target.id==='multi'&&e.target.files.length){
   const files=[...e.target.files];BATCH={busy:true,done:0,total:files.length,items:[]};render();
   for(const f of files){try{const r=await analyze(f);
     BATCH.items.push({photo:r.photo,color:r.color,cat:r.cat||'haut',guessed:!!r.cat,warmth:r.warmth||2,waterproof:!!r.waterproof,name:r.motif?r.noun:`${r.noun||(r.cat?cat(r.cat).label:'Vêtement')} ${r.color==='motif'?'à motif':r.color}`})}catch(err){}
    BATCH.done++;render()}
   BATCH.busy=false;if(!BATCH.items.length){BATCH=null;toast('Photos illisibles')}render()}
+ if(e.target.id==='cuttog'){S.cut=e.target.checked;save();
+  if(S.cut){cutMsg('Chargement…');cutLoad().then(()=>{toast('Détourage prêt')}).catch(()=>{S.cut=false;save();toast(IN_PREVIEW?'Indisponible dans l’aperçu : marche dans la version en ligne':'Téléchargement impossible (connexion ?)');if(VIEW==='ajout')render()})}}
  if(e.target.id==='aitog'){S.ai=e.target.checked;save();
   if(S.ai){aiMsg('Chargement…');aiLoad().then(()=>{toast('Reconnaissance prête');if(VIEW==='ajout')render()}).catch(()=>{S.ai=false;save();toast(IN_PREVIEW?'Indisponible dans l’aperçu : marche dans la version complète':'Téléchargement impossible (connexion ?)');if(VIEW==='ajout')render()})}}
  if(e.target.id==='imp'&&e.target.files[0]){try{const j=JSON.parse(await e.target.files[0].text());if(j.app!=='penderie')throw 0;
@@ -661,6 +736,7 @@ window.addEventListener('hashchange',route);
  for(const k of await DB.keys())if(String(k).startsWith('photo:')){const p=await DB.get(k);if(p)photos.set(k.slice(6),p)}
  route();
  if(S.ai)aiLoad().catch(()=>{});
+ if(S.cut)cutLoad().catch(()=>{});
  if(!IN_PREVIEW&&'serviceWorker' in navigator){try{navigator.serviceWorker.register('sw.js')}catch(e){}}
 })();
 </script>
