@@ -51,6 +51,17 @@ function harmony(items,mood){
  else ph='des couleurs qui osent';
  return{s,ph};
 }
+/* ---------- tenues : glisser la carte pour passer de l'une à l'autre ---------- */
+let SLIDE=null;
+function flipOutfit(d){if(!OUTS||OUTS.length<2)return;OIDX=(OIDX+d+OUTS.length)%OUTS.length;SLIDE=d>0?'r':'l';render()}
+(()=>{let x0=null,y0=0,dx=0,card=null,horiz=null;
+ document.addEventListener('touchstart',e=>{card=e.target.closest&&e.target.closest('.ocard');if(!card||!OUTS||OUTS.length<2){card=null;return}x0=e.touches[0].clientX;y0=e.touches[0].clientY;dx=0;horiz=null},{passive:true});
+ document.addEventListener('touchmove',e=>{if(!card)return;dx=e.touches[0].clientX-x0;const dy=e.touches[0].clientY-y0;if(horiz===null&&(Math.abs(dx)>8||Math.abs(dy)>8))horiz=Math.abs(dx)>Math.abs(dy);
+  if(horiz){card.style.transition='none';card.style.transform=`translateX(${dx}px) rotate(${dx/40}deg)`}},{passive:true});
+ document.addEventListener('touchend',()=>{if(!card)return;const c=card;card=null;
+  if(horiz&&Math.abs(dx)>60){c.style.transition='transform .18s ease-in,opacity .18s';c.style.transform=`translateX(${dx>0?120:-120}%) rotate(${dx>0?8:-8}deg)`;c.style.opacity='0';
+   if(!S.swiped){S.swiped=true;save()}setTimeout(()=>flipOutfit(dx<0?1:-1),170)}
+  else{c.style.transition='transform .2s';c.style.transform=''}})})();
 // après un choix, on montre la tenue proposée (petit rebond pour qu'on voie qu'elle a changé)
 function showOutfit(){const c=document.querySelector('.ocard');if(!c)return;const r=c.getBoundingClientRect();if(r.top>innerHeight*.55)scrollBy({top:r.top-innerHeight*.35,behavior:'smooth'});c.classList.add('fresh')}
 const moodChips=()=>{const m=todayMood();return `<div class="chips scroll" style="margin-bottom:12px">${Object.entries(MOODS).map(([k,l])=>`<button class="chip ${m===k?'on':''}" data-a="setMood" data-v="${k}">${l}</button>`).join('')}</div>`};

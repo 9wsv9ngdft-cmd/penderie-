@@ -95,14 +95,15 @@ function tenueBlock(w){
  const note=i=>i.state==='porte'?'déjà porté':i.boost?'mis en avant':i.lastWorn?(daysSince(i.lastWorn)>45?'à faire revivre':''):(daysSince(i.added)>=30?'jamais porté':'');
  const occ=todayOcc(),md=todayMood(),title=harmony(its,md).ph;
  const why=[`${w.feels??BANDS[w.band].f}°${w.rain?' et pluie':''}`,occ!=='quotidien'?OCCS[occ].toLowerCase():'',md?MOODS[md].toLowerCase():''].filter(Boolean).join(' · ');
- h+=`<div class="deck ${OUTS.length<2?'single':''}"><section class="ocard c${k%3}" aria-live="polite">
- <div class="top"><span class="tag">${o.plan?'📅 Prévue dans ta semaine':chose&&k===0?'✨ Pour toi : '+[todayMood()?MOODS[todayMood()]:'',todayOcc()!=='quotidien'?OCCS[todayOcc()]:''].filter(Boolean).join(' · ').toLowerCase():o.fav?'♥ Une de tes favorites':o.perfect?'Tenue parfaite':'Idée '+(k+1)}</span><span>${k+1} / ${OUTS.length}</span></div>
+ h+=`<div class="deck ${OUTS.length<2?'single':''}"><section class="ocard c${k%3} ${SLIDE?'in-'+SLIDE:''}" aria-live="polite">
+ <div class="top"><span class="tag">${o.plan?'📅 Prévue dans ta semaine':chose?'✨ Pour toi : '+[todayMood()?MOODS[todayMood()]:'',todayOcc()!=='quotidien'?OCCS[todayOcc()]:''].filter(Boolean).join(' · ').toLowerCase():o.fav?'♥ Une de tes favorites':o.perfect?'Tenue parfaite':'Idée '+(k+1)}</span>${OUTS.length>1?`<span class="odots">${OUTS.map((_,n)=>`<button class="${n===k?'on':''}" data-a="goOutfit" data-k="${n}" aria-label="Tenue ${n+1} sur ${OUTS.length}"></button>`).join('')}</span>`:''}</div>
  <h2>${esc(title[0].toUpperCase()+title.slice(1))}</h2><p class="why">${esc(why)}</p>
  <div class="pieces ${its.length>4?'many':''}">${its.map(i=>`<div class="piece">${thumb(i)}${esc(i.name)}${note(i)?`<small>${note(i)}</small>`:''}</div>`).join('')}</div>
  ${o.plan?'<p class="tiny" style="margin:6px 0 0">Préparée dans Ma semaine. Choisis un style ou une occasion pour une autre idée.</p>':''}${lookToggle(o)}${miss.length?`<p class="tiny">Pas de ${miss.join(' ni de ')} propre dispo.</p>`:''}</section></div>
  <div class="deck-actions">${OUTS.length>1?`<button class="round" data-a="nextOutfit" aria-label="Tenue suivante">${icon('x')}</button>`:''}<button class="btn big" data-a="wearOutfit" data-k="${k}">Je porte ça</button></div>
  <p class="tiny" style="text-align:center">${tip} On privilégie ce qui est déjà porté et ce que tu as un peu oublié.</p>
- <button class="btn soft block" data-a="reroll">Autres idées</button>`;
+ ${OUTS.length>1&&!S.swiped?'<p class="tiny swipe-hint">← Glisse la carte pour voir les autres idées →</p>':''}<button class="btn soft block" data-a="reroll">3 nouvelles idées</button>`;
+ SLIDE=null;
  return h;
 }
 
