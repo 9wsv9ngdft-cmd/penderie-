@@ -132,7 +132,7 @@ VIEWS.envies=vEnvies;
 
 /* ---------- actions du lot 2 ---------- */
 Object.assign(A,{
- setOcc(el){S.occDay={date:todayKey(),v:el.dataset.v};OUTS=null;save();render()},
+ setOcc(el){S.occDay={date:todayKey(),v:el.dataset.v};OUTS=null;save();render();showOutfit()},
  favToggle(){const l=S.log.find(x=>x.date===todayKey());if(!l)return;
   if(isFav(l.ids)){S.favs=favs().filter(f=>favKey(f.ids)!==favKey(l.ids));toast('Retirée des favorites')}
   else{favs().push({id:uid(),ids:[...l.ids],occ:l.occ||'quotidien',added:todayKey(),last:todayKey()});toast('Tenue favorite ♥')}

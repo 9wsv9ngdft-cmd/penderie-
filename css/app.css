@@ -321,3 +321,5 @@ button.stat{border:0;font:inherit;color:inherit;text-align:left;cursor:pointer;p
 .sheet-card.full::before{display:none}
 .sheet-card.full>.sheet-x{position:absolute;top:calc(env(safe-area-inset-top) + 12px);right:14px;margin:0;float:none}
 .sheet-card.full>.onb-dots{margin-right:60px;margin-top:18px}
+
+.ocard.fresh{animation:fresh .45s ease-out}@keyframes fresh{0%{transform:scale(.96);opacity:.4}60%{transform:scale(1.01)}100%{transform:none;opacity:1}}

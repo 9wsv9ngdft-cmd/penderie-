@@ -51,6 +51,8 @@ function harmony(items,mood){
  else ph='des couleurs qui osent';
  return{s,ph};
 }
+// après un choix, on montre la tenue proposée (petit rebond pour qu'on voie qu'elle a changé)
+function showOutfit(){const c=document.querySelector('.ocard');if(!c)return;const r=c.getBoundingClientRect();if(r.top>innerHeight*.55)scrollBy({top:r.top-innerHeight*.35,behavior:'smooth'});c.classList.add('fresh')}
 const moodChips=()=>{const m=todayMood();return `<div class="chips scroll" style="margin-bottom:12px">${Object.entries(MOODS).map(([k,l])=>`<button class="chip ${m===k?'on':''}" data-a="setMood" data-v="${k}">${l}</button>`).join('')}</div>`};
 function perfectWhy(o,w){
  const its=o.map(item).filter(Boolean),occ=todayOcc(),m=todayMood();
@@ -98,7 +100,7 @@ function eveNotice(){
 }
 
 Object.assign(A,{
- setMood(el){const v=el.dataset.v;S.moodDay={date:todayKey(),v:todayMood()===v?null:v};OUTS=null;save();render()},
+ setMood(el){const v=el.dataset.v;S.moodDay={date:todayKey(),v:todayMood()===v?null:v};OUTS=null;save();render();showOutfit()},
  drStyle(el){const v=el.dataset.v;const s=new Set(DR.style&&DR.style.length?DR.style:styleGuess(DR));s.has(v)?s.delete(v):s.add(v);DR.style=[...s];
   el.parentElement.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',DR.style.includes(c.dataset.v)))},
  lookShow(el){const k=el.dataset.k;LOOKSHOW.has(k)?LOOKSHOW.delete(k):LOOKSHOW.add(k);render()},

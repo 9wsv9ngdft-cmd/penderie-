@@ -53,6 +53,8 @@ function prefs(){const b=bot();if(!b.prefs)b.prefs={styles:[],goal:null,colors:[
 
 /* ---------- après une mise à jour : quoi de neuf ---------- */
 const NEWS={
+ 23:['✨ Ce matin : choisis l’occasion et ton style du jour, et la tenue proposée change tout de suite',
+     '📅 La tenue « prévue dans ta semaine » passe après ton choix du jour'],
  22:['🛍️ Ton shopper s’appelle ReLook, dans une vraie fenêtre de discussion',
      '☀️ Ce matin : la météo, la tenue du jour, puis ta semaine en petit (ordre réglable dans Réglages)',
      '🌱 Bilan : touche un chiffre pour voir le détail',

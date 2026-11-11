@@ -65,6 +65,7 @@ function weekStrip(){
   out.push(`<button class="wday" data-a="weekOpen"><b>${DAYS[wd]} ${d.getDate()}</b><span>${{quotidien:'Libre',boulot:'Boulot',sport:'Sport',soiree:'Soirée'}[t]||'Libre'}</span>${p?`<span class="tiny">${BANDS[p.b].l}${p.rain?' ☂':''}</span>`:''}<div class="wthumbs">${its.map(i=>thumb(i)).join('')}</div></button>`)}
  return `<div class="row between" style="margin-top:22px;align-items:baseline"><h3 style="margin:0">Ta semaine</h3><button class="btn sm ghost" data-a="weekOpen">${pl.length?'Voir':'Préparer'}</button></div><div class="wstrip">${out.join('')}</div>`;
 }
+function todayPicked(){const t=todayKey();return !!((S.moodDay&&S.moodDay.date===t&&S.moodDay.v)||(S.occDay&&S.occDay.date===t&&S.occDay.v))}
 function tenueBlock(w){
  let h='';
  const todayLog=S.log.find(l=>l.date===todayKey());
@@ -82,10 +83,11 @@ function tenueBlock(w){
  }
  h+=yesterdayCard();
  if(!w)return h+`<h2 style="margin-top:26px">On met quoi aujourd’hui ?</h2><p class="muted">Indique la météo pour recevoir des idées de tenues.</p>`;
- if(!OUTS){OUTS=genOutfits(w);const pt=plannedToday();if(pt)OUTS=[pt,...OUTS.filter(o=>favKey(o)!==favKey(pt))].slice(0,3);OIDX=0}
+ const chose=todayPicked();
+ if(!OUTS){OUTS=genOutfits(w);const pt=chose?null:plannedToday();if(pt)OUTS=[pt,...OUTS.filter(o=>favKey(o)!==favKey(pt))].slice(0,3);OIDX=0}
  if(!OUTS.length)return h+`<div class="card"><p>Rien de propre à proposer… C’est peut-être le jour de la lessive ?</p><a class="btn sm" href="#penderie">Voir la penderie</a></div>`;
  const tip={froid:'Superpose : trois couches fines tiennent plus chaud qu’une épaisse.',frais:'Prévois une couche que tu peux enlever à midi.',doux:'Une petite maille suffira.',chaud:'Matières légères et respirantes.'}[w.band];
- h+=`<h2 style="margin-top:26px">On met quoi aujourd’hui ?</h2>${occChips()}${moodChips()}`;
+ h+=`<h2 style="margin-top:26px">On met quoi aujourd’hui ?</h2><p class="label" style="margin-top:4px">C’est pour…</p>${occChips()}<p class="label" style="margin-top:0">Ton style du jour</p>${moodChips()}`;
  // une tenue à la fois, comme une carte : ✕ passe à la suivante, « Je porte ça » l'enregistre
  OIDX=Math.min(OIDX,OUTS.length-1);const k=OIDX,o=OUTS[k],its=o.map(item).filter(Boolean),cats=its.map(i=>i.cat),miss=[];
  if(!cats.includes('robe')&&!cats.includes('bas'))miss.push('bas');
@@ -94,10 +96,10 @@ function tenueBlock(w){
  const occ=todayOcc(),md=todayMood(),title=harmony(its,md).ph;
  const why=[`${w.feels??BANDS[w.band].f}°${w.rain?' et pluie':''}`,occ!=='quotidien'?OCCS[occ].toLowerCase():'',md?MOODS[md].toLowerCase():''].filter(Boolean).join(' · ');
  h+=`<div class="deck ${OUTS.length<2?'single':''}"><section class="ocard c${k%3}" aria-live="polite">
- <div class="top"><span class="tag">${o.plan?'Prévue dans ta semaine':o.fav?'♥ Une de tes favorites':o.perfect?'Tenue parfaite':'Idée '+(k+1)}</span><span>${k+1} / ${OUTS.length}</span></div>
+ <div class="top"><span class="tag">${o.plan?'📅 Prévue dans ta semaine':chose&&k===0?'✨ Pour toi : '+[todayMood()?MOODS[todayMood()]:'',todayOcc()!=='quotidien'?OCCS[todayOcc()]:''].filter(Boolean).join(' · ').toLowerCase():o.fav?'♥ Une de tes favorites':o.perfect?'Tenue parfaite':'Idée '+(k+1)}</span><span>${k+1} / ${OUTS.length}</span></div>
  <h2>${esc(title[0].toUpperCase()+title.slice(1))}</h2><p class="why">${esc(why)}</p>
  <div class="pieces ${its.length>4?'many':''}">${its.map(i=>`<div class="piece">${thumb(i)}${esc(i.name)}${note(i)?`<small>${note(i)}</small>`:''}</div>`).join('')}</div>
- ${lookToggle(o)}${miss.length?`<p class="tiny">Pas de ${miss.join(' ni de ')} propre dispo.</p>`:''}</section></div>
+ ${o.plan?'<p class="tiny" style="margin:6px 0 0">Préparée dans Ma semaine. Choisis un style ou une occasion pour une autre idée.</p>':''}${lookToggle(o)}${miss.length?`<p class="tiny">Pas de ${miss.join(' ni de ')} propre dispo.</p>`:''}</section></div>
  <div class="deck-actions">${OUTS.length>1?`<button class="round" data-a="nextOutfit" aria-label="Tenue suivante">${icon('x')}</button>`:''}<button class="btn big" data-a="wearOutfit" data-k="${k}">Je porte ça</button></div>
  <p class="tiny" style="text-align:center">${tip} On privilégie ce qui est déjà porté et ce que tu as un peu oublié.</p>
  <button class="btn soft block" data-a="reroll">Autres idées</button>`;
