@@ -1,4 +1,4 @@
-# Penderie
+# Redress
 
 Web app de garde-robe pensée pour l'écologie : ta penderie dans ton téléphone, des tenues selon la météo, moins de lessives, des vêtements qui durent.
 
