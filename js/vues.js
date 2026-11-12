@@ -12,10 +12,10 @@ function weatherCard(w){
   if(w.src==='auto'){
    h+=`<div class="wx"><div class="t">${w.tmax}°</div><div class="d"><b>${WMO(w.code)} · ${esc(S.city.name)}</b><span class="muted">min ${w.tmin}° · ressenti ~${w.feels}°</span><div style="margin-top:6px">${w.rain?`<span class="pill rain">Pluie ${w.rainP}%</span>`:`<span class="pill">${BANDS[w.band].l}</span>`}</div></div></div>`;
   }else{
-   h+=`<div class="wx"><div class="t">${BANDS[w.band].r.replace(/[^0-9<≥–]/g,'')||'·'}°</div><div class="d"><b>${BANDS[w.band].l}${w.rain?' et pluvieux':''}</b><span class="muted">Météo choisie à la main</span></div></div>`;
+   h+=`<div class="wx"><div class="t">${BANDS[w.band].r.replace(/[^0-9<≥–]/g,'')||'·'}°</div><div class="d"><b>${BANDS[w.band].l}${w.rain?' et pluvieux':''}</b><span class="muted">Météo choisie à la main</span></div></div>${manualChips()}`;
   }
   if(w.src==='auto'&&w.hours&&w.hours.length)h+=`<div class="hours" role="list" aria-label="Météo heure par heure">${w.hours.map(x=>`<div role="listitem" class="${x.wet?'wet':''}"><span>${x.h} h</span>${icon(x.wet?'rain':x.cloud?'cloud':'sun')}${x.t}°<span class="sr">${x.wet?', pluie':''}</span></div>`).join('')}</div>`;
-  h+=`<div class="spacer"></div><button class="btn sm ghost" data-a="wxManualOpen">Ajuster</button>`;
+  if(w.src==='auto')h+=`<div class="spacer"></div><button class="btn sm ghost" data-a="wxManualOpen">Ajuster</button>`;
  }else{
   if(S.city&&!WX_FAIL){h+=`<p class="muted">Météo de ${esc(S.city.name)}…</p>`;loadWeather()}
   else{
@@ -46,16 +46,51 @@ function yesterdayCard(){
   return `<div class="yl">${thumb(i,'ph mini')}<div class="tx"><b>${esc(i.name)}</b><span class="tiny">${i.state==='sale'?'Parti au sale':`Porté ${i.sinceWash||0}/${m} avant lavage`}</span></div><div class="row" style="gap:6px;flex-wrap:nowrap">${act}</div></div>`}).join('')}</div>`;
 }
 
+/* ---------- accueil : ReLook te parle et te propose ta tenue ---------- */
+let WXOPEN=false;
+function wxPill(w){
+ if(!w)return '';
+ const wet=w.hours&&w.hours.find(x=>x.wet);
+ const t=w.src==='auto'?`${w.tmax}° · ${WMO(w.code).toLowerCase()}${wet?` · ☂ ${wet.h} h`:w.rain?' · ☂':''}`:`${BANDS[w.band].l.toLowerCase()}${w.rain?' · ☂':''}`;
+ return `<button class="wxpill" data-a="wxToggle" aria-expanded="${WXOPEN}">${icon(w.rain?'rain':'sun')}${esc(t)}<span class="more">${WXOPEN?'▴':'▾'}</span></button>`;
+}
+function relookLine(w,done){
+ const hi=greet().replace('.',''),occ=todayOcc(),md=todayMood(),eve=new Date().getHours()>=18;
+ const f=typeof fullGroups==='function'?fullGroups():[];
+ const wash=f.length?`<span class="rl-extra">🫧 Au fait : machine pleine en <b>${f.map(k=>WASH[k].toLowerCase()).join(' et ')}</b>. Tu la lances ${eve?'ce soir':'aujourd’hui'} ? <a href="#penderie">Le panier</a></span>`:'';
+ if(!active().length)return `${hi} ! Moi c’est ${esc(botName())}. Ajoute quelques vêtements, et chaque matin je te prépare ta tenue.`;
+ if(done)return T({complice:'Validé ! Tu vas faire des jaloux 😎',doux:'C’est noté. Belle journée à toi 🌿',sobre:'Tenue enregistrée.',pep:'Yes ! Belle journée, tu vas briller ✨'})+wash;
+ if(!w)return `${hi} ! Dis-moi juste quel temps il fait chez toi, je m’occupe du reste.`+wash;
+ if(eve)return `${hi} ! Tu as porté quoi aujourd’hui ? Si c’est celle-ci, touche « Je l’ai portée ». Sinon, glisse ou dis-moi 👇`+wash;
+ const ctx={boulot:'Journée boulot',sport:'Sport au programme',soiree:'Soirée prévue',quotidien:''}[occ]||'';
+ const o=OUTS&&OUTS[OIDX];
+ const picked=S.moodDay&&S.moodDay.date===todayKey()&&S.moodDay.v;
+ const end=o&&o.plan?'comme prévu dans ta semaine 👇':md?(picked?`version ${MOODS[md].toLowerCase()}, voilà 👇`:`dans ton style ${MOODS[md].toLowerCase()}, comme tu aimes 👇`):'je te propose ça 👇';
+ return `${hi} ! ${ctx?ctx+' : ':''}${end}`+wash;
+}
+function relookHero(w,done){
+ return `<div class="rl-hero"><span class="ava big" aria-hidden="true">${BOT_SVG}</span><div class="rl-bubble"><span class="rl-name">${esc(botName())}</span>${(()=>{const t=relookLine(w,done),i=t.indexOf('<span class="rl-extra">');return i<0?t+wxPill(w):t.slice(0,i)+wxPill(w)+t.slice(i)})()}</div></div>`;
+}
+function replyChips(){
+ const occ=todayOcc(),md=todayMood();
+ const L=[['Plus chic','setMood','chic',md==='chic'],['Plus cosy','setMood','cosy',md==='cosy'],['Plus coloré','setMood','couleur',md==='couleur'],['Décontracté','setMood','decontracte',md==='decontracte'],
+  occ==='boulot'?null:['Pour le boulot','setOcc','boulot'],occ==='sport'?null:['C’est pour le sport','setOcc','sport'],occ==='soiree'?null:['Ce soir je sors','setOcc','soiree'],occ==='quotidien'?null:['Journée tranquille','setOcc','quotidien'],['Autre chose','reroll','']].filter(Boolean);
+ return `<div class="rl-replies">${L.map(([l,a,v,on])=>`<button class="chip ${on?'on':''}" data-a="${a}" data-v="${v}">${l}</button>`).join('')}</div>
+ <form class="rl-ask" data-f="relookQ"><input type="text" name="q" placeholder="Réponds à ${esc(botName())}…" autocomplete="off"><button class="btn sm" aria-label="Envoyer">➤</button></form>`;
+}
 function vMatin(){
- const d=now();
- let h=`<p class="eyebrow"><b style="color:var(--moss)">Dress Up</b> · ${d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</p><h1>${greet()}</h1>`;
- if(!active().length)return h+`<div class="card empty"><div class="serif">Ta penderie est vide</div><p class="muted">Commence par photographier quelques vêtements : un haut, un bas, des chaussures suffisent pour une première tenue.</p><a class="btn" href="#ajout">Ajouter un vêtement</a></div>`;
- const w=effWeather();
- const B={meteo:()=>weatherCard(w),alertes:()=>safetyNotice()+seasonNotice()+laundryNotice()+eveNotice()+wishNotice()+circularNotice(),tenue:()=>tenueBlock(w),semaine:()=>weekStrip(),photo:()=>photoOfDay()};
+ const d=now(),w=effWeather(),done=S.log.some(l=>l.date===todayKey());
+ if(!done&&active().length)prepOuts(w); // la tenue est prête avant que ReLook en parle
+ let h=`<p class="eyebrow"><b style="color:var(--moss)">Dress Up</b> · ${d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</p>`+relookHero(w,done);
+ if(!active().length)return h+`<a class="btn block" href="#ajout" style="margin-top:14px">＋ Ajouter des vêtements</a>`;
+ if(!w||WXOPEN)h+=weatherCard(w);
+ h+=tenueBlock(w);
+ if(w&&!done)h+=replyChips();
+ const B={alertes:()=>{const x=safetyNotice()+seasonNotice()+eveNotice()+wishNotice()+circularNotice();return x?`<div class="rl-more">${x}</div>`:''},hier:()=>done?'':yesterdayCard(),semaine:()=>weekStrip(),photo:()=>photoOfDay()};
  for(const k of matinOrder())if(!matinHidden(k))h+=B[k]();
  return h;
 }
-const MATIN={meteo:['☀️ Météo',0],alertes:['🔔 Petits rappels',1],tenue:['👕 On met quoi aujourd’hui',0],semaine:['📅 Ta semaine',1],photo:['📷 Photo du jour',1]};
+const MATIN={alertes:['🔔 Petits rappels',1],hier:['👕 Hier, tu portais…',1],semaine:['📅 Ta semaine',1],photo:['📷 Photo du jour',1]};
 function matinOrder(){const o=((S.matin||{}).order||[]).filter(k=>MATIN[k]);Object.keys(MATIN).forEach(k=>{if(!o.includes(k))o.push(k)});return o}
 const matinHidden=k=>MATIN[k][1]&&((S.matin||{}).hide||[]).includes(k);
 function weekStrip(){
@@ -65,6 +100,7 @@ function weekStrip(){
   out.push(`<button class="wday" data-a="weekOpen"><b>${DAYS[wd]} ${d.getDate()}</b><span>${{quotidien:'Libre',boulot:'Boulot',sport:'Sport',soiree:'Soirée'}[t]||'Libre'}</span>${p?`<span class="tiny">${BANDS[p.b].l}${p.rain?' ☂':''}</span>`:''}<div class="wthumbs">${its.map(i=>thumb(i)).join('')}</div></button>`)}
  return `<div class="row between" style="margin-top:22px;align-items:baseline"><h3 style="margin:0">Ta semaine</h3><button class="btn sm ghost" data-a="weekOpen">${pl.length?'Voir':'Préparer'}</button></div><div class="wstrip">${out.join('')}</div>`;
 }
+function prepOuts(w){if(OUTS||!w)return;OUTS=genOutfits(w);const pt=todayPicked()?null:plannedToday();if(pt)OUTS=[pt,...OUTS.filter(o=>favKey(o)!==favKey(pt))].slice(0,3);OIDX=0}
 function todayPicked(){const t=todayKey();return !!((S.moodDay&&S.moodDay.date===t&&S.moodDay.v)||(S.occDay&&S.occDay.date===t&&S.occDay.v))}
 function tenueBlock(w){
  let h='';
@@ -73,7 +109,7 @@ function tenueBlock(w){
   const its=todayLog.ids.map(item).filter(Boolean),act=active(),m=todayKey().slice(0,7),worn=act.filter(i=>i.lastWorn&&i.lastWorn.slice(0,7)===m).length;
   const next=its.filter(i=>totalWears(i)<30).sort((a,b)=>totalWears(b)-totalWears(a))[0];
   h+=`<section class="done"><svg viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="#CDE1BD"/><path d="M19 33l9 9 17-19" fill="none" stroke="#2E5A3A" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-  <h2>C’est noté,<br>belle journée !</h2>
+  <h2>Ta tenue du jour</h2>
   <div class="strip">${its.map(i=>thumb(i)).join('')}</div>
   <p>${esc(its.map(i=>i.name).join(' · '))}</p>${lookToggle(todayLog.ids)}
   <div class="box"><p style="margin:0;color:#fff;font-weight:600">Ce mois-ci</p><p style="margin:2px 0 0;color:#fff"><b>${worn} / ${act.length}</b> pièces portées</p><div class="bar"><i style="width:${act.length?worn/act.length*100:0}%"></i></div></div>
@@ -81,13 +117,12 @@ function tenueBlock(w){
   <div class="row"><label class="btn sm">Photo miroir<input type="file" accept="image/*" capture="environment" id="mirrorPic" class="sr"></label><button class="btn sm line" data-a="favToggle" aria-pressed="${isFav(todayLog.ids)}">${isFav(todayLog.ids)?'♥ Favorite':'♡ Tenue favorite'}</button><button class="btn sm line" data-a="undo">Changer</button></div></section>`;
   return h;
  }
- h+=yesterdayCard();
- if(!w)return h+`<h2 style="margin-top:26px">On met quoi aujourd’hui ?</h2><p class="muted">Indique la météo pour recevoir des idées de tenues.</p>`;
+ if(!w)return h;
  const chose=todayPicked();
- if(!OUTS){OUTS=genOutfits(w);const pt=chose?null:plannedToday();if(pt)OUTS=[pt,...OUTS.filter(o=>favKey(o)!==favKey(pt))].slice(0,3);OIDX=0}
+ prepOuts(w);
  if(!OUTS.length)return h+`<div class="card"><p>Rien de propre à proposer… C’est peut-être le jour de la lessive ?</p><a class="btn sm" href="#penderie">Voir la penderie</a></div>`;
  const tip={froid:'Superpose : trois couches fines tiennent plus chaud qu’une épaisse.',frais:'Prévois une couche que tu peux enlever à midi.',doux:'Une petite maille suffira.',chaud:'Matières légères et respirantes.'}[w.band];
- h+=`<h2 style="margin-top:26px">On met quoi aujourd’hui ?</h2><p class="label" style="margin-top:4px">C’est pour…</p>${occChips()}<p class="label" style="margin-top:0">Ton style du jour</p>${moodChips()}`;
+ 
  // une tenue à la fois, comme une carte : ✕ passe à la suivante, « Je porte ça » l'enregistre
  OIDX=Math.min(OIDX,OUTS.length-1);const k=OIDX,o=OUTS[k],its=o.map(item).filter(Boolean),cats=its.map(i=>i.cat),miss=[];
  if(!cats.includes('robe')&&!cats.includes('bas'))miss.push('bas');
@@ -99,10 +134,9 @@ function tenueBlock(w){
  <div class="top"><span class="tag">${o.plan?'📅 Prévue dans ta semaine':chose?'✨ Pour toi : '+[todayMood()?MOODS[todayMood()]:'',todayOcc()!=='quotidien'?OCCS[todayOcc()]:''].filter(Boolean).join(' · ').toLowerCase():o.fav?'♥ Une de tes favorites':o.perfect?'Tenue parfaite':'Idée '+(k+1)}</span>${OUTS.length>1?`<span class="odots">${OUTS.map((_,n)=>`<button class="${n===k?'on':''}" data-a="goOutfit" data-k="${n}" aria-label="Tenue ${n+1} sur ${OUTS.length}"></button>`).join('')}</span>`:''}</div>
  <h2>${esc(title[0].toUpperCase()+title.slice(1))}</h2><p class="why">${esc(why)}</p>
  <div class="pieces ${its.length>4?'many':''}">${its.map(i=>`<div class="piece">${thumb(i)}${esc(i.name)}${note(i)?`<small>${note(i)}</small>`:''}</div>`).join('')}</div>
- ${o.plan?'<p class="tiny" style="margin:6px 0 0">Préparée dans Ma semaine. Choisis un style ou une occasion pour une autre idée.</p>':''}${lookToggle(o)}${miss.length?`<p class="tiny">Pas de ${miss.join(' ni de ')} propre dispo.</p>`:''}</section></div>
- <div class="deck-actions">${OUTS.length>1?`<button class="round" data-a="nextOutfit" aria-label="Tenue suivante">${icon('x')}</button>`:''}<button class="btn big" data-a="wearOutfit" data-k="${k}">Je porte ça</button></div>
- <p class="tiny" style="text-align:center">${tip} On privilégie ce qui est déjà porté et ce que tu as un peu oublié.</p>
- ${OUTS.length>1&&!S.swiped?'<p class="tiny swipe-hint">← Glisse la carte pour voir les autres idées →</p>':''}<button class="btn soft block" data-a="reroll">3 nouvelles idées</button>`;
+ ${o.plan?'<p class="tiny" style="margin:6px 0 0">Préparée dans Ma semaine. Réponds à ReLook en dessous pour une autre idée.</p>':''}${lookToggle(o)}${miss.length?`<p class="tiny">Pas de ${miss.join(' ni de ')} propre dispo.</p>`:''}</section></div>
+ <div class="deck-actions">${OUTS.length>1?`<button class="round" data-a="nextOutfit" aria-label="Tenue suivante">${icon('x')}</button>`:''}<button class="btn big" data-a="wearOutfit" data-k="${k}">${new Date().getHours()>=18?'Je l’ai portée':'Je porte ça'}</button></div>
+ ${OUTS.length>1&&!S.swiped?'<p class="tiny swipe-hint">← Glisse la carte pour voir les autres idées →</p>':''}<p class="tiny rl-tip">💡 ${tip}</p>`;
  SLIDE=null;
  return h;
 }
@@ -227,6 +261,7 @@ function aiCards(){return `<div class="card"><label class="toggle" style="border
 function vReglages(){
  let h=`<p class="eyebrow">Dress Up</p><h1>Réglages</h1>`;
  if(IN_PREVIEW)h+=`<div class="notice">Tu es dans l’<b>aperçu</b> : les données restent dans ce navigateur, mais la météo auto et l’export de sauvegarde sont désactivés. Pour la vraie app, installe la version complète (voir mon message).</div>`;
+ h+=`<h2>Notifications</h2>${notifCard(false)}`;
  h+=`<h2>Photos</h2>${aiCards()}`;
  const mo=matinOrder();
  h+=`<h2>Écran Ce matin</h2><div class="card"><p class="tiny" style="margin-top:0">Range les blocs dans l’ordre que tu veux, et cache ceux qui ne te servent pas.</p>${mo.map((k,n)=>`<div class="mrow"><span class="mlab ${matinHidden(k)?'off':''}">${MATIN[k][0]}</span>

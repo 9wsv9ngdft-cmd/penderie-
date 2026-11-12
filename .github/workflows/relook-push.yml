@@ -1,0 +1,60 @@
+# Déploie le petit serveur de notifications de ReLook sur Cloudflare (gratuit).
+# Il faut deux secrets dans GitHub (Settings → Secrets and variables → Actions) :
+#   CLOUDFLARE_API_TOKEN  (modèle « Edit Cloudflare Workers »)
+#   CLOUDFLARE_ACCOUNT_ID
+# Ensuite, l'adresse du serveur est écrite dans push-config.json, que l'app lit.
+name: ReLook notifications (Cloudflare)
+on:
+  push:
+    branches: [main]
+    paths: ['worker/**', '.github/workflows/relook-push.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency: relook-push
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Secrets présents ?
+        id: chk
+        run: |
+          if [ -z "$CF_TOKEN" ] || [ -z "$CF_ACCOUNT" ]; then
+            echo "skip=1" >> "$GITHUB_OUTPUT"
+            echo "::warning::Ajoute les secrets CLOUDFLARE_API_TOKEN et CLOUDFLARE_ACCOUNT_ID, puis relance."
+          fi
+      - name: Espace de stockage (KV)
+        if: steps.chk.outputs.skip != '1'
+        id: kv
+        run: |
+          API="https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT"
+          ID=$(curl -s -H "Authorization: Bearer $CF_TOKEN" "$API/storage/kv/namespaces?per_page=100" | jq -r '.result[]? | select(.title=="relook-push") | .id')
+          if [ -z "$ID" ]; then
+            ID=$(curl -s -X POST -H "Authorization: Bearer $CF_TOKEN" -H "Content-Type: application/json" -d '{"title":"relook-push"}' "$API/storage/kv/namespaces" | jq -r '.result.id')
+          fi
+          [ -n "$ID" ] && [ "$ID" != "null" ] || { echo "::error::Impossible de créer le stockage KV (droits du jeton ?)"; exit 1; }
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
+      - name: Déploiement du serveur
+        if: steps.chk.outputs.skip != '1'
+        working-directory: worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          printf 'name = "relook-push"\nmain = "index.js"\ncompatibility_date = "2025-01-01"\nworkers_dev = true\n\n[[kv_namespaces]]\nbinding = "KV"\nid = "%s"\n\n[triggers]\ncrons = ["* * * * *"]\n' "${{ steps.kv.outputs.id }}" > wrangler.toml
+          npx --yes wrangler@4 deploy
+      - name: Adresse du serveur pour l'app
+        if: steps.chk.outputs.skip != '1'
+        run: |
+          SUB=$(curl -s -H "Authorization: Bearer $CF_TOKEN" "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT/workers/subdomain" | jq -r '.result.subdomain // empty')
+          [ -n "$SUB" ] || { echo "::error::Pas de sous-domaine workers.dev : ouvre une fois « Workers & Pages » dans Cloudflare, puis relance."; exit 1; }
+          URL="https://relook-push.$SUB.workers.dev"
+          curl -s "$URL/vapid" | jq -e .key > /dev/null || echo "::warning::Le serveur ne répond pas encore à $URL/vapid"
+          echo "{\"url\":\"$URL\"}" > push-config.json
+          git config user.name "relook-bot"; git config user.email "relook-bot@users.noreply.github.com"
+          git add push-config.json
+          git diff --cached --quiet || { git commit -m "Adresse du serveur de notifications"; git push; }

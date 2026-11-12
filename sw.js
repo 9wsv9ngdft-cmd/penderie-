@@ -1,6 +1,6 @@
 // Dress Up : fonctionne hors ligne. Seuls la météo (Open-Meteo) et les modèles d'IA passent par le réseau.
 // À chaque envoi : augmenter ce numéro (et APP_VERSION dans js/base.js), et tenir la liste SHELL à jour avec index.html.
-const C='dressup-v24';
+const C='dressup-v25';
 const SHELL=['./','./index.html','./css/app.css','./js/base.js','./js/lessive.js','./js/cout.js','./js/saisons.js','./js/meteo-tenues.js','./js/vues.js','./js/ia.js','./js/actions.js','./js/achats.js','./js/empreinte.js','./js/accueil.js','./js/circulaire.js','./js/valise.js','./js/dessous.js','./js/planning.js','./js/reparation.js','./js/badges.js','./js/assistant.js','./js/scanner.js','./js/style.js','./js/main.js','./manifest.webmanifest','./icon-180.png','./icon-192.png','./icon-512.png','./icon-maskable-512.png','./favicon.png','./fonts/inter.woff','./fonts/unbounded.woff'];
 // cache:'reload' : à l'installation, chaque fichier est redemandé au serveur, jamais repris de la mémoire du navigateur
 // (GitHub Pages autorise le navigateur à garder un fichier 10 minutes : sans ça, une nouvelle version pouvait s'installer avec d'anciens fichiers).
@@ -26,3 +26,9 @@ self.addEventListener('fetch',e=>{
   }));
   e.waitUntil(net.catch(()=>{}));
 });
+
+// Notifications de ReLook : le serveur envoie {title, body, url} ; on l'affiche, et un toucher ouvre l'app sur l'accueil.
+self.addEventListener('push',e=>{let d={};try{d=e.data?e.data.json():{}}catch(x){}
+  e.waitUntil(self.registration.showNotification(d.title||'ReLook',{body:d.body||'Ta tenue du jour est prête.',icon:'icon-192.png',badge:'icon-192.png',tag:'relook-'+(d.kind||'msg'),data:{url:d.url||'./#matin'}}))});
+self.addEventListener('notificationclick',e=>{e.notification.close();const url=(e.notification.data&&e.notification.data.url)||'./#matin';
+  e.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(cs=>{for(const c of cs){if('focus' in c){c.navigate(url).catch(()=>{});return c.focus()}}return clients.openWindow(url)}))});

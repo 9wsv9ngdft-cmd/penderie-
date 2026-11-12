@@ -149,7 +149,8 @@ function botSay(text){
  const r=reply(text);TYPING=true;chatSheet();
  setTimeout(()=>{TYPING=false;msgPush({from:'bot',t:r.t,acts:r.acts||[]});if(!$('#sheet').hidden&&$('#chatLog'))chatSheet()},700);
 }
-document.addEventListener('submit',e=>{const f=e.target.closest('form[data-f=chat]');if(!f)return;e.preventDefault();const v=f.q.value.trim();if(v)botSay(v)});
+document.addEventListener('submit',e=>{const g=e.target.closest('form[data-f=relookQ]');if(g){e.preventDefault();const v=g.q.value.trim();chatSheet();if(v)botSay(v);return}
+ const f=e.target.closest('form[data-f=chat]');if(!f)return;e.preventDefault();const v=f.q.value.trim();if(v)botSay(v)});
 
 /* ---------- réglages de l'assistant (accueil + Réglages) ---------- */
 function botSettings(inOnb){

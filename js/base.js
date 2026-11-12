@@ -1,6 +1,6 @@
 // Dress Up — Utilitaires, référentiels, stockage local, adresses des photos, vignettes
 "use strict";
-const APP_VERSION=24; // à augmenter à chaque envoi, comme le cache dans sw.js
+const APP_VERSION=25; // à augmenter à chaque envoi, comme le cache dans sw.js
 /* ---------- utilitaires ---------- */
 const $=(s,r=document)=>r.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

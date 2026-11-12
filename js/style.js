@@ -16,7 +16,9 @@ function styleGuess(i){
 }
 const styleOf=i=>i.style&&i.style.length?i.style:styleGuess(i);
 const dayOverride=(k=todayKey())=>(S.dayPlan||{})[k]||null;
-const todayMood=()=>S.moodDay&&S.moodDay.date===todayKey()?S.moodDay.v:(dayOverride()||{}).mood||null;
+const PREF_MOOD={casual:'decontracte',chic:'chic',cosy:'cosy',crea:'couleur',sport:'decontracte'};
+const prefMood=()=>{const p=S.bot&&S.bot.prefs;return p&&p.styles&&p.styles.length?PREF_MOOD[p.styles[0]]||null:null};
+const todayMood=()=>S.moodDay&&S.moodDay.date===todayKey()?(S.moodDay.v||null):(dayOverride()||{}).mood||prefMood();
 function moodScore(i,mood,occ){
  const st=styleOf(i);let s=0;
  const want={decontracte:['casual'],chic:['chic'],cosy:['cosy','casual']}[mood];
@@ -111,7 +113,7 @@ function eveNotice(){
 }
 
 Object.assign(A,{
- setMood(el){const v=el.dataset.v;S.moodDay={date:todayKey(),v:todayMood()===v?null:v};OUTS=null;save();render();showOutfit()},
+ setMood(el){const v=el.dataset.v;S.moodDay={date:todayKey(),v:todayMood()===v?'':v};OUTS=null;save();render();showOutfit()},
  drStyle(el){const v=el.dataset.v;const s=new Set(DR.style&&DR.style.length?DR.style:styleGuess(DR));s.has(v)?s.delete(v):s.add(v);DR.style=[...s];
   el.parentElement.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',DR.style.includes(c.dataset.v)))},
  lookShow(el){const k=el.dataset.k;LOOKSHOW.has(k)?LOOKSHOW.delete(k):LOOKSHOW.add(k);render()},
