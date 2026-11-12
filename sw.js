@@ -1,6 +1,6 @@
 // Dress Up : fonctionne hors ligne. Seuls la météo (Open-Meteo) et les modèles d'IA passent par le réseau.
 // À chaque envoi : augmenter ce numéro (et APP_VERSION dans js/base.js), et tenir la liste SHELL à jour avec index.html.
-const C='dressup-v25';
+const C='dressup-v26';
 const SHELL=['./','./index.html','./css/app.css','./js/base.js','./js/lessive.js','./js/cout.js','./js/saisons.js','./js/meteo-tenues.js','./js/vues.js','./js/ia.js','./js/actions.js','./js/achats.js','./js/empreinte.js','./js/accueil.js','./js/circulaire.js','./js/valise.js','./js/dessous.js','./js/planning.js','./js/reparation.js','./js/badges.js','./js/assistant.js','./js/scanner.js','./js/style.js','./js/main.js','./manifest.webmanifest','./icon-180.png','./icon-192.png','./icon-512.png','./icon-maskable-512.png','./favicon.png','./fonts/inter.woff','./fonts/unbounded.woff'];
 // cache:'reload' : à l'installation, chaque fichier est redemandé au serveur, jamais repris de la mémoire du navigateur
 // (GitHub Pages autorise le navigateur à garder un fichier 10 minutes : sans ça, une nouvelle version pouvait s'installer avec d'anciens fichiers).

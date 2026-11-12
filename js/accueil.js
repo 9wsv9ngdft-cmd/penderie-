@@ -54,6 +54,7 @@ function prefs(){const b=bot();if(!b.prefs)b.prefs={styles:[],goal:null,colors:[
 
 /* ---------- après une mise à jour : quoi de neuf ---------- */
 const NEWS={
+ 26:['✨ Nouvelle icône Dress Up, noir et or'],
  25:['🧥 ReLook devient ton accueil : il te dit bonjour, la météo, et te propose ta tenue dans ton style',
      '🫧 Il te prévient quand la machine est pleine',
      '🌙 Le soir, il te demande ce que tu as porté',
