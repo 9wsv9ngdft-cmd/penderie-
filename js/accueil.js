@@ -4,29 +4,17 @@
 /* ---------- accueil au premier lancement ---------- */
 let ONB=0;
 function onbSheet(){
- const navIco=v=>{const a=document.querySelector(`#tabs a[data-v=${v}] svg`);return a?a.outerHTML:''};
- const tour=[['matin','ReLook','Ton personal shopper. Chaque matin, il te dit le temps qu’il fait et te propose ta tenue. Tu peux aussi lui parler.'],['penderie','Penderie','Tous tes vêtements, la lessive, la valise.'],['envies','Envies','Une envie d’achat ? Prends-la en photo, et décide dans 5 jours.'],['bilan','Bilan','Ton empreinte, tes défis, tes badges.']];
  const p=prefs();
+ // v27 : trois étapes seulement. Notifications, IA, ville, machine et ReLook se règlent plus tard dans ☰ › Réglages.
  const steps=[
-  ()=>`<h2 style="margin-top:0">Bienvenue dans Dress Up 🌱</h2><p>Ta penderie dans ton téléphone, des tenues selon la météo, et des vêtements qui durent plus longtemps.</p>
-   <div class="priv"><b>🔒 Tout reste sur ton téléphone</b><br>Pas de compte, pas de cloud, pas de pub. Tes photos ne sortent jamais. Même l’IA tourne sur ton téléphone.</div>`,
-  ()=>`<h2 style="margin-top:0">L’app en 4 onglets</h2><div class="tour">${tour.map(([v,t,d])=>`<div class="tour-row"><span class="tour-ico">${navIco(v)}</span><span><b>${t}</b><br><span class="tiny">${d}</span></span></div>`).join('')}</div>
-   <p class="tiny">Le menu ☰ en haut à droite : ta semaine, tes tenues favorites, les réglages.</p>`,
-  ()=>`<h2 style="margin-top:0">ReLook, ton personal shopper</h2><p class="tiny">Il connaît ta penderie et ton budget, et t’aide à acheter moins mais mieux. Donne-lui un nom et un caractère :</p>${botSettings(true)}`,
-  ()=>`<h2 style="margin-top:0" class="onb">Fais connaissance</h2><p class="tiny">3 questions pour que ses conseils te ressemblent. Tout est facultatif.</p>
+  ()=>`<p class="eyebrow">Bienvenue</p><h1 style="margin-top:6px">Dress Up</h1><p>Ta penderie dans ton téléphone, des tenues selon la météo, et des vêtements qui durent plus longtemps.</p>
+   <div class="priv"><b>Tout reste sur ton téléphone</b><br>Pas de compte, pas de cloud, pas de pub. Tes photos ne sortent jamais. Même l’IA tourne sur ton téléphone.</div>`,
+  ()=>`<h2 style="margin-top:0" class="onb">Fais connaissance</h2><p class="tiny">3 questions pour que les tenues te ressemblent. Tout est facultatif.</p>
    <p class="label">Ton style</p><div class="chips">${Object.entries(STYLES).map(([k,l])=>`<button class="chip ${p.styles.includes(k)?'on':''}" data-a="prefTog" data-k="styles" data-v="${k}">${l}</button>`).join('')}<button class="chip ${p.styles.includes('crea')?'on':''}" data-a="prefTog" data-k="styles" data-v="crea">Créatif</button></div>
    <p class="label">Ton objectif</p><div class="chips">${Object.entries(GOALS).map(([k,l])=>`<button class="chip ${p.goal===k?'on':''}" data-a="prefGoal" data-v="${k}">${l}</button>`).join('')}</div>
    <p class="label">Tes couleurs préférées</p><div class="chips">${COLORS.map(([n,v])=>`<button class="chip ${p.colors.includes(n)?'on':''}" data-a="prefTog" data-k="colors" data-v="${n}"><span class="dot" style="background:${v}"></span>${n}</button>`).join('')}</div>`,
-  ()=>`<h2 style="margin-top:0" class="onb">Tes rendez-vous avec ReLook</h2><p class="tiny">Une petite notification le matin pour ta tenue, et une le soir pour noter ce que tu as porté. Choisis tes heures :</p>${notifCard(true)}`,
-  ()=>`<h2 style="margin-top:0">Photos et IA</h2><p class="tiny">Deux options pour aller plus vite. Les modèles se téléchargent <b>une seule fois</b> (Wi-Fi conseillé), puis tout se passe sur ton téléphone. Tu peux les activer plus tard dans Réglages.</p>${aiCards()}`,
-  ()=>`<h2 style="margin-top:0" class="onb">Deux réglages</h2>
-   ${IN_PREVIEW?'':`<p class="label">Ta ville, pour la météo</p><form class="row" data-f="city" style="flex-wrap:nowrap"><input type="search" name="city" placeholder="${S.city?esc(S.city.name):'ex. Lyon'}" autocomplete="off"><button class="btn sm">OK</button></form>`}
-   <p class="label">Ta machine à laver</p><div class="chips">${[5,6,7,8,9,10].map(k=>`<button class="chip ${capKg()===k?'on':''}" data-a="onbKg" data-v="${k}">${k} kg</button>`).join('')}</div>
-   <p class="label">Pour parler CO₂, ce qui te parle</p><div class="chips">${Object.entries(INTERESTS).map(([k,l])=>`<button class="chip ${(S.interests||[]).includes(k)?'on':''}" data-a="interest" data-v="${k}">${l}</button>`).join('')}</div>`,
-  ()=>`<h2 style="margin-top:0">C’est parti !</h2><p>Commence par ta penderie. Le plus simple : pose chaque vêtement à plat sur un fond uni, enchaîne les photos, puis OK.</p>
-   <button class="btn block" data-a="onbEnd" data-v="ajout">📷 Prendre mes vêtements en photo</button><div class="spacer"></div>
-   <button class="btn ghost block" data-a="onbInv">⚡ Inventaire express : juste compter, en 2 minutes</button>
-   <p class="tiny" style="margin-top:12px">10 pièces suffisent pour les premières tenues.</p>`];
+  ()=>`<h2 style="margin-top:0">Commence par 10 pièces</h2><p class="tiny">Pas besoin de toute ta penderie aujourd’hui. Tes basiques suffisent pour les premières tenues ; le reste viendra au fil des jours.</p>${base10Card(true)}
+   <p class="tiny" style="margin-top:12px">Notifications, ville, IA et ton personal shopper se règlent quand tu veux dans ☰ › Réglages.</p>`];
  const last=ONB===steps.length-1;
  sheet(`<div class="onb-dots">${steps.map((_,k)=>`<i class="${k===ONB?'on':k<ONB?'past':''}"></i>`).join('')}</div>${steps[ONB]()}
   <div class="spacer grow"></div><div class="row between">${ONB?`<button class="btn sm ghost" data-a="onbPrev">Retour</button>`:'<span></span>'}
@@ -54,6 +42,7 @@ function prefs(){const b=bot();if(!b.prefs)b.prefs={styles:[],goal:null,colors:[
 
 /* ---------- après une mise à jour : quoi de neuf ---------- */
 const NEWS={
+ 27:['Nouveau style noir et or, façon maison de couture','Démarrage plus simple : commence par 10 pièces, le reste au fil des jours','« Trouver la photo » : retrouve l’image du produit à partir de sa marque et de sa référence, puis colle-la','Accueil allégé : « Ta semaine » et « Photo du jour » se réaffichent dans Réglages'],
  26:['✨ Nouvelle icône Dress Up, noir et or'],
  25:['🧥 ReLook devient ton accueil : il te dit bonjour, la météo, et te propose ta tenue dans ton style',
      '🫧 Il te prévient quand la machine est pleine',

@@ -82,17 +82,35 @@ function vMatin(){
  const d=now(),w=effWeather(),done=S.log.some(l=>l.date===todayKey());
  if(!done&&active().length)prepOuts(w); // la tenue est prête avant que ReLook en parle
  let h=`<p class="eyebrow"><b style="color:var(--moss)">Dress Up</b> · ${d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</p>`+relookHero(w,done);
- if(!active().length)return h+`<a class="btn block" href="#ajout" style="margin-top:14px">＋ Ajouter des vêtements</a>`;
+ if(!active().length)return h+base10Card();
  if(!w||WXOPEN)h+=weatherCard(w);
  h+=tenueBlock(w);
  if(w&&!done)h+=replyChips();
+ h+=active().length<10?base10Card():newPieceCard();
  const B={alertes:()=>{const x=safetyNotice()+seasonNotice()+eveNotice()+wishNotice()+circularNotice();return x?`<div class="rl-more">${x}</div>`:''},hier:()=>done?'':yesterdayCard(),semaine:()=>weekStrip(),photo:()=>photoOfDay()};
  for(const k of matinOrder())if(!matinHidden(k))h+=B[k]();
  return h;
 }
 const MATIN={alertes:['🔔 Petits rappels',1],hier:['👕 Hier, tu portais…',1],semaine:['📅 Ta semaine',1],photo:['📷 Photo du jour',1]};
 function matinOrder(){const o=((S.matin||{}).order||[]).filter(k=>MATIN[k]);Object.keys(MATIN).forEach(k=>{if(!o.includes(k))o.push(k)});return o}
-const matinHidden=k=>MATIN[k][1]&&((S.matin||{}).hide||[]).includes(k);
+// v27 : l'accueil va à l'essentiel ; « Ta semaine » et « Photo du jour » se réaffichent dans Réglages
+const MATIN_HIDE_DEF=['semaine','photo'];
+const matinHidden=k=>MATIN[k][1]&&((S.matin||{}).hide||MATIN_HIDE_DEF).includes(k);
+/* ---------- démarrer avec 10 pièces, puis compléter au fil de l'eau ---------- */
+const BASE10=[['T-shirt','haut'],['Chemise ou top','haut'],['Pull','pull'],['Jean','bas'],['Pantalon ou jupe','bas'],['Veste','veste'],['Manteau','veste'],['Baskets','chaussures'],['Chaussures','chaussures'],['Robe','robe']];
+function base10Card(onb){
+ const act=active(),n=Math.min(act.length,10),seen={};
+ const li=BASE10.map(([l,c])=>{seen[c]=(seen[c]||0)+1;const ok=act.filter(i=>i.cat===c).length>=seen[c];return `<li class="${ok?'ok':''}">${l}</li>`}).join('');
+ return `<section class="base10"><div class="row between" style="align-items:baseline"><span class="label" style="margin:0">Ta base</span><span class="tiny">${n} / 10</span></div>
+ <div class="segs" aria-hidden="true">${Array.from({length:10},(_,k)=>`<i class="${k<n?'on':''}"></i>`).join('')}</div>
+ ${onb?'':`<h2 style="margin:0 0 4px">Commence par 10 pièces</h2><p class="tiny">Tes basiques suffisent : les tenues arrivent tout de suite, le reste viendra au fil des jours.</p>`}
+ <ul>${li}</ul>
+ ${onb?`<button class="btn block" data-a="onbEnd" data-v="ajout">Photographier mes pièces</button><div class="spacer"></div><button class="btn ghost block" data-a="onbInv">Inventaire express</button>`
+ :`<a class="btn block" href="#ajout">Photographier mes pièces</a>`}</section>`;
+}
+function newPieceCard(){
+ return `<a class="newpiece" href="#ajout"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg><span><b>Tu portes une pièce pas encore rangée ?</b><small class="tiny" style="display:block;margin-top:2px">Une photo, et elle rejoint ta penderie.</small></span><i aria-hidden="true">+</i></a>`;
+}
 function weekStrip(){
  const pl=S.plan&&S.plan.days?S.plan.days:[],out=[];
  for(let k=1;k<=6;k++){const d=now();d.setDate(d.getDate()+k);const key=todayKey(d),p=pl.find(x=>x.date===key),wd=d.getDay(),t=agenda()[wd]||'quotidien';
@@ -108,11 +126,11 @@ function tenueBlock(w){
  if(todayLog){
   const its=todayLog.ids.map(item).filter(Boolean),act=active(),m=todayKey().slice(0,7),worn=act.filter(i=>i.lastWorn&&i.lastWorn.slice(0,7)===m).length;
   const next=its.filter(i=>totalWears(i)<30).sort((a,b)=>totalWears(b)-totalWears(a))[0];
-  h+=`<section class="done"><svg viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="#CDE1BD"/><path d="M19 33l9 9 17-19" fill="none" stroke="#2E5A3A" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  h+=`<section class="done"><svg viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="none" stroke="#D4B47A" stroke-width="1.5"/><path d="M20 33l8 8 16-18" fill="none" stroke="#D4B47A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
   <h2>Ta tenue du jour</h2>
   <div class="strip">${its.map(i=>thumb(i)).join('')}</div>
   <p>${esc(its.map(i=>i.name).join(' · '))}</p>${lookToggle(todayLog.ids)}
-  <div class="box"><p style="margin:0;color:#fff;font-weight:600">Ce mois-ci</p><p style="margin:2px 0 0;color:#fff"><b>${worn} / ${act.length}</b> pièces portées</p><div class="bar"><i style="width:${act.length?worn/act.length*100:0}%"></i></div></div>
+  <div class="box"><p style="margin:0;color:var(--ink);font-weight:600">Ce mois-ci</p><p style="margin:2px 0 0;color:var(--ink)"><b>${worn} / ${act.length}</b> pièces portées</p><div class="bar"><i style="width:${act.length?worn/act.length*100:0}%"></i></div></div>
   ${next?`<p>${esc(next.name)} : ${portsLabel(next)}. Encore ${30-totalWears(next)} pour l’objectif 30.</p>`:''}
   <div class="row"><label class="btn sm">Photo miroir<input type="file" accept="image/*" capture="environment" id="mirrorPic" class="sr"></label><button class="btn sm line" data-a="favToggle" aria-pressed="${isFav(todayLog.ids)}">${isFav(todayLog.ids)?'♥ Favorite':'♡ Tenue favorite'}</button><button class="btn sm line" data-a="undo">Changer</button></div></section>`;
   return h;
@@ -195,7 +213,9 @@ function vAjout(){
  ${DR.dup&&!EDIT?`<div class="dup"><p><b>Déjà dans ta penderie ?</b> Ça ressemble à ${DR.dup.id?`« ${esc(DR.dup.name)} »`:esc(DR.dup.name)}.</p><div class="dup-pair"><figure><img src="${U(DR.photo)}" alt="Nouvelle photo"><figcaption>Nouvelle</figcaption></figure><figure>${DR.dup.photo&&U(DR.dup.photo)?`<img src="${U(DR.dup.photo)}" alt="${esc(DR.dup.name)}">`:'<div class="dup-none">photo détourée</div>'}<figcaption>${DR.dup.id?'Dans ta penderie':'Déjà prise'}</figcaption></figure></div><div class="row" style="flex-wrap:nowrap"><button class="btn sm" style="flex:1" data-a="dupDraft">Ne pas l’ajouter</button><button class="btn sm ghost" style="flex:1" data-a="dupDraftKeep">C’est un autre</button></div></div>`:''}
  <label class="photo-drop"><div class="ph" id="prev" ${DR.photo?`style="background-image:url('${U(DR.photo)}')"`:''}></div><input type="file" accept="image/*" capture="environment" id="pic"><span class="btn sm soft" style="margin-top:${DR.photo?10:0}px">${DR.photo?'Changer la photo':'📷 Prendre une photo'}</span>
  <div class="tiny" style="margin-top:8px" aria-live="polite">${DR.detected==='reconnaissance…'?'Reconnaissance du type en cours…':DR.detected?`<b>Détecté : ${esc(DR.detected)}</b> · vérifie ci-dessous.`:'Reste sur ton téléphone, compressée à ~60 Ko.'}${DR.photo&&S.cut&&!DR.cut?' Le fond sera retiré plus tard, quand tu ne te sers pas de l’app.':''}</div></label>
- ${EDIT?'':`<div class="row" style="margin-top:8px;flex-wrap:nowrap"><button class="btn sm ghost" style="flex:1" data-a="pasteImg">Coller une image</button></div>`}
+ <p class="label">Marque, référence ou lien <span style="text-transform:none;letter-spacing:0;font-weight:400">(facultatif)</span></p><input type="text" id="ref" value="${esc(DR.ref||'')}" placeholder="ex. Uniqlo 455123, ou lien du produit" autocomplete="off">
+ <div class="row" style="margin-top:10px;flex-wrap:nowrap"><button class="btn sm ghost" style="flex:1" data-a="findPhoto">Trouver la photo</button>${EDIT?'':`<button class="btn sm ghost" style="flex:1" data-a="pasteImg">Coller l’image</button>`}</div>
+ <p class="tiny" style="margin-top:6px">« Trouver la photo » ouvre une recherche d’images (ou ton lien). Appuie longtemps sur la bonne photo, copie-la, puis reviens ici${EDIT?' et choisis-la avec « Changer la photo »':' pour la coller'}.</p>
  <p class="label">Nom</p><input type="text" id="nm" value="${esc(DR.name)}" placeholder="ex. Pull marin rayé" autocomplete="off">
  <p class="label">Catégorie</p><div class="chips">${CATS.map(c=>`<button class="chip ${DR.cat===c.id?'on':''}" data-a="dr" data-k="cat" data-v="${c.id}">${c.label}</button>`).join('')}</div>
  <p class="label">Couleur dominante</p><div class="chips">${COLORS.map(([n,v])=>`<button class="chip ${DR.color===n?'on':''}" data-a="dr" data-k="color" data-v="${n}"><span class="dot" style="background:${v}"></span>${n}</button>`).join('')}</div>
@@ -210,7 +230,6 @@ function vAjout(){
  <p class="label">Matière principale <span style="text-transform:none;font-weight:400">(facultatif)</span></p><div class="chips">${Object.entries(MATIERES).map(([k,l])=>`<button class="chip ${DR.mat===k?'on':''}" data-a="dr" data-k="mat" data-v="${k}">${l}</button>`).join('')}</div>
  <p class="label">Fabriqué en <span style="text-transform:none;font-weight:400">(voir l’étiquette)</span></p><input type="text" id="madeIn" list="pays" value="${esc(DR.madeIn||'')}" placeholder="ex. Portugal" autocomplete="off"><datalist id="pays">${['France','Portugal','Italie','Espagne','Turquie','Maroc','Tunisie','Roumanie','Chine','Bangladesh','Inde','Pakistan','Vietnam','Cambodge','Indonésie','Sri Lanka','Myanmar'].map(p=>`<option value="${p}">`).join('')}</datalist>
  <p class="label">Coût environnemental <span style="text-transform:none;font-weight:400">(s’il est sur l’étiquette)</span></p><div class="row" style="flex-wrap:nowrap"><input type="text" inputmode="numeric" id="ecoScore" value="${DR.ecoScore||''}" placeholder="ex. 850" style="max-width:140px"><span class="muted">points</span></div>
- <p class="label">Marque, référence ou lien <span style="text-transform:none;font-weight:400">(facultatif)</span></p><input type="text" id="ref" value="${esc(DR.ref||'')}" placeholder="ex. Uniqlo 455123, ou lien du produit" autocomplete="off"><p class="tiny" style="margin-top:6px">Utile le jour où tu le revends ou le donnes.</p>
  <p class="label">Ports avant lavage</p><div class="stepper"><button data-a="maxDec">−</button><b id="maxv">${m===0?'jamais sale':m}</b><button data-a="maxInc">+</button></div><p class="tiny" style="margin-top:6px">Laver moins souvent = moins d’eau, d’énergie et d’usure. Aérer un pull entre deux ports suffit souvent.</p>
  <div class="spacer"></div>
  <label class="toggle"><span>Imperméable</span><input type="checkbox" id="wp" ${DR.waterproof?'checked':''}></label>

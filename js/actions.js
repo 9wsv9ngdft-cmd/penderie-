@@ -34,7 +34,7 @@ const A={
  wxToggle(){WXOPEN=!WXOPEN;render()},
  statInfo(el){statSheet(el.dataset.v)},
  matinMove(el){const o=matinOrder(),i=o.indexOf(el.dataset.v),j=i+(+el.dataset.d);if(j<0||j>=o.length)return;[o[i],o[j]]=[o[j],o[i]];S.matin={...(S.matin||{}),order:o};save();render()},
- matinHide(el){const m=S.matin||(S.matin={}),h=new Set(m.hide||[]),k=el.dataset.v;h.has(k)?h.delete(k):h.add(k);m.hide=[...h];save();render()},
+ matinHide(el){const m=S.matin||(S.matin={}),h=new Set(m.hide||MATIN_HIDE_DEF),k=el.dataset.v;h.has(k)?h.delete(k):h.add(k);m.hide=[...h];save();render()},
  toolsOpen(){toolsSheet()},
  washOpen(el){washSheet(el&&el.dataset.v)},
  fStored(){F.stored=!F.stored;render()},
@@ -46,6 +46,13 @@ const A={
  seasonSwitch(el){const prev=curSeason(),next=el.dataset.v;if(prev===next)return;S.season=next;S.seasonSnooze=null;OUTS=null;save();render();seasonSheet(prev,next)},
  seasonSnooze(){S.seasonSnooze=todayKey();save();render()},
  swapPhoto(){keepDraftInputs();[DR.photo,DR.orig]=[DR.orig,DR.photo];DR.cutOn=DR.cutOn===false;render()},
+ findPhoto(){keepDraftInputs();
+  // pas de recherche automatique : on ouvre la recherche d'images (ou le lien du produit), et c'est toi qui choisis
+  const ref=($('#ref')&&$('#ref').value||'').trim();
+  if(/^https?:\/\//i.test(ref)){window.open(ref,'_blank','noopener');return}
+  const q=ref||[($('#nm')&&$('#nm').value||'').trim(),DR&&DR.color!=='motif'?DR.color:''].filter(Boolean).join(' ');
+  if(!q){toast('Écris d’abord la marque et la référence, ou le nom');if($('#ref'))$('#ref').focus();return}
+  window.open('https://www.google.com/search?tbm=isch&q='+encodeURIComponent(q),'_blank','noopener')},
  async pasteImg(){
   try{const items=await navigator.clipboard.read();
    for(const it of items){const t=it.types.find(x=>x.startsWith('image/'));if(t){await handleImage(await it.getType(t));return}}

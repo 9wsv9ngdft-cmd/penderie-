@@ -21,7 +21,7 @@ function tripSheet(){
  const D=TRIPD;
  sheet(`<h2 style="margin-top:0">Préparer une valise</h2><p class="tiny">Le minimum qui se combine, selon la météo là-bas.</p>
  <p class="label">Destination</p><input type="search" id="tDest" value="${esc(D.dest)}" placeholder="ex. Marseille" autocomplete="off">
- <p class="label">Départ</p><input type="date" id="tStart" value="${D.start}" style="font:inherit;padding:10px 12px;border-radius:12px;border:1.5px solid var(--line);background:#fff">
+ <p class="label">Départ</p><input type="date" id="tStart" value="${D.start}" style="font:inherit;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink)">
  <p class="label">Durée</p><div class="stepper"><button data-a="tDays" data-d="-1">−</button><b>${D.days} jour${D.days>1?'s':''}</b><button data-a="tDays" data-d="1">+</button></div>
  <p class="label">Au programme</p><div class="chips">${['sport','soiree','boulot'].map(k=>`<button class="chip ${D.occ.includes(k)?'on':''}" data-a="tOcc" data-v="${k}">${OCCS[k]}</button>`).join('')}</div>
  ${D.needWx?`<p class="label">Quel temps là-bas ?</p><p class="tiny">${esc(D.needWx)}</p><div class="chips">${Object.entries(BANDS).map(([k,b])=>`<button class="chip ${D.band===k?'on':''}" data-a="tBand" data-v="${k}">${b.l} <span class="tiny">${b.r}</span></button>`).join('')}<button class="chip ${D.rain?'on':''}" data-a="tRain">☂ Pluie</button></div>`:''}

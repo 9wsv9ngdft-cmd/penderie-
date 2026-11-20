@@ -2,10 +2,11 @@
    swap : le texte s'affiche tout de suite dans la police du système, puis bascule. */
 @font-face{font-family:"Inter";src:url("../fonts/inter.woff") format("woff");font-weight:400 700;font-style:normal;font-display:swap}
 @font-face{font-family:"Unbounded";src:url("../fonts/unbounded.woff") format("woff");font-weight:500 700;font-style:normal;font-display:swap}
-/* Dress Up — design « Portant » : crème, encre verte, cartes blanches, titres ronds et larges.
+/* Dress Up — design « Maison » (v27) : noir profond, or champagne, titres à empattements (Didot / Bodoni du téléphone).
+   Les noms des variables viennent de l'ancien design « Portant » : --moss est désormais l'or, --moss2 son fond teinté.
    Contrastes vérifiés (texte ≥ 4,5:1) ; zones tactiles ≥ 44 px. */
-:root{--paper:#F5F0E6;--card:#FFFFFF;--ink:#1C2A20;--muted:#545C50;--line:#E2D9C8;--rail:#8A8272;--moss:#2E5A3A;--moss2:#DCE8D2;--clay:#A8421F;--clay2:#F6DDD0;--sun:#B07A12;--sun2:#F6E9C9;--plum:#5E3F6E;--plum2:#ECE1EF;--sand:#F1E2CB;--lilac:#E5DDF0;--sky:#D7E5F2;--r:24px;
- --head:"Unbounded",ui-rounded,"SF Pro Rounded","Hiragino Maru Gothic ProN",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--shadow:0 2px 10px rgba(28,42,32,.07);color-scheme:light}
+:root{--paper:#0D0D0F;--card:#17171B;--ink:#F2EDE3;--muted:#A8A194;--line:#2C2923;--rail:#5C5546;--moss:#D4B47A;--moss2:#221D14;--clay:#E3906F;--clay2:#2B1913;--sun:#E0B45C;--sun2:#262010;--plum:#C9A8D8;--plum2:#221B27;--sand:#1B1915;--lilac:#1B1920;--sky:#16212C;--r:4px;--gold:#D4B47A;--on-gold:#0D0D0F;
+ --head:"Bodoni 72","Didot","Bodoni MT","Bodoni Moda","Playfair Display",Georgia,"Times New Roman",serif;--shadow:none;color-scheme:dark}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.45 Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 body{padding:env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left)}
@@ -346,3 +347,105 @@ button.stat{border:0;font:inherit;color:inherit;text-align:left;cursor:pointer;p
 
 .nrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}.nrow:first-child{border-top:0;padding-top:0}
 .ntime{font:inherit;font-size:16px;font-weight:600;border:1.5px solid var(--line);border-radius:12px;padding:8px 10px;background:#fff;color:var(--ink);min-height:44px}.ntime:disabled{opacity:.4}
+
+/* ================= Design « Maison » (v27) : noir & or =================
+   Surcharges des règles ci-dessus qui avaient des couleurs claires écrites en dur,
+   et la typographie couture : titres à empattements fins, libellés en capitales espacées. */
+h1,h2,h3,.serif{font-weight:400;letter-spacing:0}
+h1{font-size:34px;line-height:1.12}
+h2{font-size:21px}
+h3{font-size:17px}
+.eyebrow{font-size:11px;letter-spacing:.32em;text-transform:uppercase}
+.eyebrow b{font-family:var(--head);font-weight:400;letter-spacing:.2em}
+.label{font-size:11px;font-weight:500;letter-spacing:.28em}
+.card{border:1px solid var(--line)}
+.btn{border-radius:2px;background:var(--gold);color:var(--on-gold);font-size:13px;font-weight:500;letter-spacing:.11em;text-transform:uppercase}
+.btn.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px rgba(212,180,122,.55)}
+.btn.soft{background:var(--moss2);color:var(--gold);box-shadow:inset 0 0 0 1px rgba(212,180,122,.25)}
+.btn.clay{background:var(--clay);color:var(--on-gold)}
+.btn.danger{box-shadow:inset 0 0 0 1px var(--clay)}
+.btn.sm{font-size:12px;letter-spacing:.12em}
+.btn.big{font-family:inherit;font-size:14px;font-weight:500;letter-spacing:.2em;box-shadow:none}
+.chip{background:var(--card);box-shadow:inset 0 0 0 1px var(--line);font-weight:500}
+.card .chip,.sheet-card .chip{background:transparent;box-shadow:inset 0 0 0 1px var(--line)}
+.chip.on,.card .chip.on,.sheet-card .chip.on{background:var(--gold);color:var(--on-gold);box-shadow:none}
+select,input[type=text],input[type=search],.ntime{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:2px}
+input::placeholder{color:#7D776C}
+nav.tabs{background:rgba(13,13,15,.94);border-top:1px solid rgba(212,180,122,.18)}
+nav.tabs a{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#8E887C}
+nav.tabs svg{stroke-width:1.3}
+nav.tabs a.on{color:var(--gold);font-weight:500}
+.tab-bot.unread::after{border-color:var(--paper)}
+.wx .t,.stat b,.stats3 b{font-weight:400}
+.pill.rain{color:#A9CBEA}
+.ph{border-radius:2px;background-color:#1C1C21}
+.ph.sw span{background:rgba(13,13,15,.82);color:var(--ink)}
+.ph.big{background-color:#141418}
+.b-porte,.hang .tagx{color:var(--sun)}
+.stat,.opt,.wday,.drow{border-radius:4px;box-shadow:inset 0 0 0 1px var(--line)}
+.bar i{background:var(--gold)}
+details p{color:var(--muted)}
+.photo-drop{border:1px dashed rgba(212,180,122,.45);border-radius:4px}
+.stepper button{border:1px solid var(--line)}
+.sheet-bg{background:rgba(0,0,0,.62)}
+.sheet-card{border-radius:14px 14px 0 0;border-top:1px solid rgba(212,180,122,.25)}
+.sheet-x{box-shadow:inset 0 0 0 1px var(--line)}
+#toast{background:var(--gold);color:var(--on-gold);border-radius:2px;letter-spacing:.04em}
+code{background:#211F1B}
+.msg{border-radius:4px}.msg.bot{box-shadow:inset 0 0 0 1px var(--line)}
+.msg.me{background:var(--gold);color:var(--on-gold)}
+.menu-btn{box-shadow:inset 0 0 0 1px var(--line)}
+.scan-ok{background:rgba(212,180,122,.94);color:var(--on-gold)}
+.scan-dup{background:rgba(22,22,26,.96);border:1px solid rgba(212,180,122,.3)}
+.scan-dup .btn{background:var(--gold);color:var(--on-gold)}
+.dup-pair img,.dup-none{background:#1C1C21;border-radius:2px}
+.look{border-radius:2px;background-color:#1C1C21}
+.deck::before{background:#1A1916;border:1px solid var(--line);border-radius:6px}
+.deck::after{background:#1E1D19;border:1px solid var(--line);border-radius:6px}
+.ocard,.ocard.c1,.ocard.c2{background:var(--card);border-radius:4px;border:1px solid rgba(212,180,122,.32);box-shadow:0 18px 40px rgba(0,0,0,.45)}
+.ocard .top{font-size:11px;letter-spacing:.12em}
+.ocard .tag{background:rgba(212,180,122,.12);color:var(--gold);border-radius:2px;font-weight:500}
+.ocard h2{font-size:24px}
+.ocard .piece{font-weight:500}
+.ocard .piece .ph{border-radius:2px;box-shadow:none}
+.round{background:var(--card);box-shadow:inset 0 0 0 1px rgba(212,180,122,.55)}
+.done,.hero-co2{background:var(--card);color:var(--ink);border:1px solid rgba(212,180,122,.35);border-radius:4px}
+.done h2{color:var(--ink)}
+.done p{color:var(--muted)}
+.done .box,.hero-co2 .hc-row div,.hero-co2 .hc-row button{background:rgba(212,180,122,.07);border-radius:2px}
+.done .bar{background:var(--line)}.done .bar i{background:var(--gold)}
+.done .btn{background:var(--gold);color:var(--on-gold)}
+.done .btn.line{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1px rgba(212,180,122,.55)}
+.hero-co2 .hc-big,.dbig{font-family:var(--head);font-weight:400;color:var(--gold)}
+.rail-row{background:linear-gradient(#3A362E,var(--rail)) 0 2px/100% 3px no-repeat}
+.hang>svg{stroke:#8E7A55;stroke-width:1.8}
+.hang .ph{box-shadow:0 10px 14px rgba(0,0,0,.45)}
+.hang .tagx{border-radius:2px}
+.passport{background:var(--moss2) linear-gradient(#3A362E,var(--rail)) 0 46px/100% 3px no-repeat;border-radius:4px 4px 10px 10px}
+.passport>svg{stroke:#8E7A55;stroke-width:1.8}
+.passport .ph.big{border-radius:2px;box-shadow:0 20px 24px rgba(0,0,0,.5)}
+.life::before{background:#3A352C}
+.life li::before{border-width:2px}
+.life li.now::before{box-shadow:0 0 0 5px rgba(212,180,122,.2)}
+.tour-ico{border-radius:4px;box-shadow:inset 0 0 0 1px var(--line)}
+.tour-ico svg{stroke:var(--gold);stroke-width:1.3}
+.ava{background:var(--gold)}.ava svg{stroke:var(--on-gold)}
+.ava.big{box-shadow:0 6px 16px rgba(0,0,0,.45)}
+.rl-bubble{border-radius:4px 4px 4px 0;box-shadow:inset 0 0 0 1px var(--line)}
+.odots button{background:rgba(242,237,227,.25)}.odots button.on{background:var(--gold)}
+.wxpill{border-radius:2px}
+.priv,.fact,.dtip,.notice,.dup{border-radius:4px}
+.onb-dots i{background:var(--line);height:2px}.onb-dots i.past{background:rgba(212,180,122,.4)}.onb-dots i.on{background:var(--gold)}
+/* nouveautés v27 : base de 10 pièces, ajout au fil de l'eau, retrouver la photo du produit */
+.base10{margin:18px 0 0;padding:16px;border:1px solid rgba(212,180,122,.3);border-radius:4px;background:var(--card)}
+.base10 .segs{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:4px;margin:10px 0 12px}
+.base10 .segs i{height:2px;background:var(--line)}.base10 .segs i.on{background:var(--gold)}
+.base10 ul{list-style:none;margin:0 0 14px;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:16px}
+.base10 li{display:flex;align-items:center;gap:10px;min-height:38px;border-bottom:1px solid var(--line);font-family:var(--head);font-size:16px}
+.base10 li::before{content:"";flex:none;width:12px;height:12px;border-radius:50%;box-sizing:border-box;border:1px solid rgba(212,180,122,.6)}
+.base10 li.ok::before{background:var(--gold);border:0}
+.newpiece{display:flex;align-items:center;gap:14px;margin:18px 0 0;padding:14px 16px;border:1px dashed rgba(212,180,122,.45);border-radius:4px;color:var(--ink);text-decoration:none}
+.newpiece b{display:block;font-family:var(--head);font-weight:400;font-size:18px;line-height:1.25}
+.newpiece span{flex:1;min-width:0}
+.newpiece svg{flex:none;width:30px;height:30px;fill:none;stroke:var(--gold);stroke-width:1.2;stroke-linejoin:round}
+.newpiece i{flex:none;width:44px;height:44px;border-radius:50%;box-shadow:inset 0 0 0 1px var(--gold);display:grid;place-items:center;font-style:normal;font-size:22px;color:var(--gold)}

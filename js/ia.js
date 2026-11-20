@@ -82,7 +82,7 @@ async function aiGuess(canvas){
  return{style:si>=0&&ps[si]>.45?[['casual','chic','sport','cosy'][si]]:null,mat:mat?{wool:'laine',cotton:'coton',linen:'lin',denim:'coton',leather:'cuir',fleece:'polyester',silk:'soie','synthetic polyester':'polyester'}[mat[0]]:null,cat:t[1],noun,warmth:Math.max(1,Math.min(3,t[3]+(mat?mat[2]:0))),waterproof:!!t[4],motif:!!pat,conf:c[1]};
 }
 /* Détourage : modèle RMBG-1.4 (BRIA) sur l'appareil, ~45 Mo téléchargés une fois. */
-const RMBG_ID='briaai/RMBG-1.4',BG_COLOR='#F1EBDF';
+const RMBG_ID='briaai/RMBG-1.4',BG_COLOR='#141418';
 let CUT=null,CUT_LOADING=null,CUT_MSG='';
 function cutMsg(m){CUT_MSG=m;const el=$('#cutstat');if(el)el.textContent=m}
 function cutLoad(){
