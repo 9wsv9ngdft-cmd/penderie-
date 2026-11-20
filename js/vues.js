@@ -78,10 +78,18 @@ function replyChips(){
  return `<div class="rl-replies">${L.map(([l,a,v,on])=>`<button class="chip ${on?'on':''}" data-a="${a}" data-v="${v}">${l}</button>`).join('')}</div>
  <form class="rl-ask" data-f="relookQ"><input type="text" name="q" placeholder="Réponds à ${esc(botName())}…" autocomplete="off"><button class="btn sm" aria-label="Envoyer">➤</button></form>`;
 }
+// v28 : la pastille rouge de l'onglet ReLook s'éteint dès que ses nouveaux messages sont affichés ici.
+// Ils restent visibles jusqu'à l'ouverture de la discussion ou jusqu'au lendemain.
+let RL_NEWS=null;
+function relookNews(){
+ if(S.chatUnread){const bots=chat().filter(m=>m.from==='bot'),n=Math.min(Math.max(S.chatUnreadN||1,1),3);RL_NEWS=bots.slice(-n);S.chatUnread=false;S.chatUnreadN=0;save()}
+ if(!RL_NEWS||!RL_NEWS.length)return'';
+ return `<button class="rl-news" data-a="chatOpen"><span class="label" style="margin:0 0 6px;display:block">${RL_NEWS.length>1?RL_NEWS.length+' nouveaux messages':'Nouveau message'} de ${esc(botName())}</span>${RL_NEWS.map(m=>`<span class="rl-news-t">${m.t}</span>`).join('')}<span class="tiny" style="display:block;margin-top:8px;color:var(--moss)">Ouvrir la discussion ›</span></button>`;
+}
 function vMatin(){
  const d=now(),w=effWeather(),done=S.log.some(l=>l.date===todayKey());
  if(!done&&active().length)prepOuts(w); // la tenue est prête avant que ReLook en parle
- let h=`<p class="eyebrow"><b style="color:var(--moss)">Dress Up</b> · ${d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</p>`+relookHero(w,done);
+ let h=`<p class="eyebrow"><b style="color:var(--moss)">Dress Up</b> · ${d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'})}</p>`+relookHero(w,done)+relookNews();
  if(!active().length)return h+base10Card();
  if(!w||WXOPEN)h+=weatherCard(w);
  h+=tenueBlock(w);

@@ -449,3 +449,7 @@ code{background:#211F1B}
 .newpiece span{flex:1;min-width:0}
 .newpiece svg{flex:none;width:30px;height:30px;fill:none;stroke:var(--gold);stroke-width:1.2;stroke-linejoin:round}
 .newpiece i{flex:none;width:44px;height:44px;border-radius:50%;box-shadow:inset 0 0 0 1px var(--gold);display:grid;place-items:center;font-style:normal;font-size:22px;color:var(--gold)}
+/* v28 : nouveaux messages de ReLook affichés sur l'accueil */
+.rl-news{display:block;width:100%;text-align:left;font:inherit;color:var(--ink);background:var(--card);border:1px solid rgba(212,180,122,.4);border-radius:4px;padding:14px 16px;margin:12px 0 4px;cursor:pointer}
+.rl-news-t{display:block;font-size:15px;line-height:1.4;padding:4px 0}
+.rl-news-t+.rl-news-t{border-top:1px solid var(--line);margin-top:4px;padding-top:8px}

@@ -42,6 +42,7 @@ function prefs(){const b=bot();if(!b.prefs)b.prefs={styles:[],goal:null,colors:[
 
 /* ---------- après une mise à jour : quoi de neuf ---------- */
 const NEWS={
+ 28:['La pastille rouge de ReLook s’éteint dès que tu as vu son message : il s’affiche maintenant sur l’accueil'],
  27:['Nouveau style noir et or, façon maison de couture','Démarrage plus simple : commence par 10 pièces, le reste au fil des jours','« Trouver la photo » : retrouve l’image du produit à partir de sa marque et de sa référence, puis colle-la','Accueil allégé : « Ta semaine » et « Photo du jour » se réaffichent dans Réglages'],
  26:['✨ Nouvelle icône Dress Up, noir et or'],
  25:['🧥 ReLook devient ton accueil : il te dit bonjour, la météo, et te propose ta tenue dans ton style',

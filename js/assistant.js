@@ -118,7 +118,7 @@ const chat=()=>S.chat||(S.chat=[]);
 function msgPush(m){chat().push({id:uid(),...m});if(chat().length>40)S.chat=chat().slice(-40);save()}
 function botPush(kind,v){
  const t=kind==='badge'?T({complice:`Pas mal du tout : badge ${esc(v.t)} débloqué 😎`,doux:`Bravo, tu as débloqué le badge ${esc(v.t)} 🌱`,sobre:`Badge débloqué : ${esc(v.t)}.`,pep:`WOUHOU ! Badge ${esc(v.t)} ! 🎉`}):v.t;
- msgPush({from:'bot',t});S.chatUnread=true;save();botBadge();
+ msgPush({from:'bot',t});S.chatUnread=true;S.chatUnreadN=(S.chatUnreadN||0)+1;save();botBadge();
 }
 function botBadge(){const b=$('#botTab');if(b)b.classList.toggle('unread',!!S.chatUnread)}
 function actBtn([l,a,attrs]){
@@ -131,7 +131,7 @@ function prefLine(){const p=prefs(),bits=[];
  if(p.colors.length)bits.push('tes couleurs ('+p.colors.slice(0,3).join(', ')+')');
  return bits.length?`J’ai noté ${bits.join(', ')}. `:''}
 function chatSheet(){
- S.chatUnread=false;save();botBadge();
+ S.chatUnread=false;S.chatUnreadN=0;RL_NEWS=null;save();botBadge();
  if(!chat().length)msgPush({from:'bot',t:`${T({complice:'Salut ! Moi c’est',doux:'Bonjour, je suis',sobre:'Je suis',pep:'Hello ! Moi c’est'})} ${esc(botName())}. ${T({complice:'Je connais ta penderie par cœur (et tes petites faiblesses 😏).',doux:'Je connais ta penderie et je suis là pour t’aider à faire de bons choix.',sobre:'Je connais ta penderie et ton budget.',pep:'Je connais ta penderie et on va faire des merveilles ensemble ! ✨'})} ${prefLine()}Écris-moi ou utilise le micro du clavier.`,acts:quick()});
  const last=chat()[chat().length-1],ava=`<span class="ava" aria-hidden="true">${BOT_SVG}</span>`;
  sheet(`<div class="chat-head">${ava.replace('ava','ava big')}<div><h2>${esc(botName())}</h2><span class="online">en ligne · reste sur ton téléphone</span></div></div>

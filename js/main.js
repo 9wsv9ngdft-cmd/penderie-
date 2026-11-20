@@ -27,7 +27,7 @@ function route(){
 let DAY=todayKey();
 function wake(){
  if(document.hidden)return;const t=todayKey();if(t===DAY)return;
- DAY=t;OUTS=null;if(VIEW!=='ajout'&&$('#sheet').hidden)render();
+ DAY=t;OUTS=null;RL_NEWS=null;if(VIEW!=='ajout'&&$('#sheet').hidden)render();
 }
 document.addEventListener('visibilitychange',wake);window.addEventListener('pageshow',wake);
 window.addEventListener('hashchange',route);
